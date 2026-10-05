@@ -28,6 +28,7 @@
             <a href="/portfolio" class="nav-link">💼 Portfolio</a>
             <a href="/logout" class="nav-link danger">Logout</a>
             <div class="live-pill"><span class="pulse-dot"></span> LIVE</div>
+            <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">⏸ Loading</div>
         </div>
     </nav>
 
@@ -426,6 +427,17 @@
     loadAlerts();
     loadWatchlist();
     loadHistory();
+
+    async function loadMarketStatus() {
+        const r = await fetch('/api/market_status');
+        const d = await r.json();
+        const el = document.getElementById('mktStatus');
+        el.innerHTML = `<span style="width:7px;height:7px;background:${d.color};border-radius:50%;display:inline-block;${d.open?'animation:pulse 1.5s infinite':''};"></span> ${d.label}`;
+        el.style.color = d.color;
+        el.style.borderColor = d.color + '55';
+    }
+    loadMarketStatus();
+    setInterval(loadMarketStatus, 60000);
 </script>
 </body>
 </html>

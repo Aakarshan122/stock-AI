@@ -559,6 +559,27 @@ def delete_portfolio():
 def global_markets():
     return jsonify(get_global_markets())
 
+@app.route('/api/market_status')
+def market_status():
+    now = datetime.utcnow()
+    # IST = UTC+5:30, NYSE = UTC-5 (EST)
+    ist_hour = (now.hour + 5) % 24
+    ist_min  = (now.minute + 30) % 60
+    ist_time = ist_hour + (1 if now.minute + 30 >= 60 else 0)
+    weekday  = now.weekday()  # 0=Mon, 6=Sun
+    nse_open  = weekday < 5 and (9 < ist_time < 15 or (ist_time == 9 and ist_min >= 15) or (ist_time == 15 and ist_min <= 30))
+    nyse_hour = (now.hour - 5) % 24
+    nyse_open = weekday < 5 and 9 <= nyse_hour < 16
+    if nse_open and nyse_open:
+        label, color = 'NSE & NYSE Open', '#00e676'
+    elif nse_open:
+        label, color = 'NSE Open', '#00e676'
+    elif nyse_open:
+        label, color = 'NYSE Open', '#00e676'
+    else:
+        label, color = 'Markets Closed', '#ff5252'
+    return jsonify({'label': label, 'color': color, 'open': nse_open or nyse_open})
+
 # ── Stock Detail (30d history + high/low for chart modal) ─────────────────────
 @app.route('/api/stock_detail', methods=['POST'])
 @login_required
