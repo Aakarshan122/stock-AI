@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — StockTracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #05050f;
+            color: #f0f0f0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        @media(max-width: 768px) { body { grid-template-columns: 1fr; } .left-panel { display: none; } }
+
+        /* Left decorative panel */
+        .left-panel {
+            background: linear-gradient(135deg, #0d0d1f 0%, #1a0a2e 50%, #0a1628 100%);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .left-panel::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 30% 50%, rgba(108,99,255,0.2) 0%, transparent 60%),
+                        radial-gradient(ellipse at 70% 80%, rgba(0,212,255,0.15) 0%, transparent 50%);
+        }
+        .left-content { position: relative; z-index: 1; text-align: center; }
+        .left-logo { font-size: 4rem; margin-bottom: 20px; }
+        .left-title { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #6c63ff, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+        .left-sub { color: #555; font-size: 1rem; line-height: 1.7; max-width: 320px; }
+        .features { margin-top: 40px; display: flex; flex-direction: column; gap: 14px; text-align: left; }
+        .feature-item { display: flex; align-items: center; gap: 12px; color: #888; font-size: 0.9rem; }
+        .feature-item span:first-child { font-size: 1.2rem; }
+        .grid-lines {
+            position: absolute; inset: 0; opacity: 0.03;
+            background-image: linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Right form panel */
+        .right-panel {
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px 24px; background: #05050f;
+        }
+        .form-box { width: 100%; max-width: 400px; }
+
+        .form-header { margin-bottom: 36px; }
+        .form-header h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+        .form-header p { color: #555; font-size: 0.9rem; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 0.82rem; font-weight: 500; color: #888; margin-bottom: 8px; letter-spacing: 0.3px; text-transform: uppercase; }
+        .input-wrap { position: relative; }
+        .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 1rem; opacity: 0.4; }
+        .form-group input {
+            width: 100%; padding: 13px 14px 13px 42px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; color: #fff;
+            font-size: 0.95rem; font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .form-group input:focus { outline: none; border-color: #6c63ff; background: rgba(108,99,255,0.06); box-shadow: 0 0 0 3px rgba(108,99,255,0.1); }
+        .form-group input::placeholder { color: #333; }
+
+        .btn-primary {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, #6c63ff, #00d4ff);
+            color: #fff; border: none; border-radius: 12px;
+            font-weight: 700; font-size: 1rem; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s; margin-top: 8px;
+            position: relative; overflow: hidden;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(108,99,255,0.4); }
+        .btn-primary:active { transform: translateY(0); }
+
+        .divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+        .divider span { color: #444; font-size: 0.8rem; }
+
+        .link-text { text-align: center; font-size: 0.88rem; color: #555; }
+        .link-text a { color: #6c63ff; text-decoration: none; font-weight: 500; }
+        .link-text a:hover { text-decoration: underline; }
+
+        .msg { padding: 12px 16px; border-radius: 10px; margin-top: 14px; font-size: 0.88rem; text-align: center; display: none; }
+        .msg.error { background: rgba(255,82,82,0.1); color: #ff5252; border: 1px solid rgba(255,82,82,0.2); display: block; }
+        .msg.success { background: rgba(0,230,118,0.1); color: #00e676; border: 1px solid rgba(0,230,118,0.2); display: block; }
+
+        .mobile-logo { display: none; text-align: center; margin-bottom: 32px; }
+        @media(max-width: 768px) { .mobile-logo { display: block; } }
+        .mobile-logo span { font-size: 2.5rem; }
+        .mobile-logo h1 { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #6c63ff, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+<!-- Left Panel -->
+<div class="left-panel">
+    <div class="grid-lines"></div>
+    <div class="left-content">
+        <div class="left-logo">📈</div>
+        <div class="left-title">StockTracker</div>
+        <p class="left-sub">Your intelligent stock market companion. Track, analyze, and get alerted — all in one place.</p>
+        <div class="features">
+            <div class="feature-item"><span>🌎</span><span>Global Markets — NIFTY, NASDAQ, S&P 500</span></div>
+            <div class="feature-item"><span>🔔</span><span>Smart Alerts with Volume Detection</span></div>
+            <div class="feature-item"><span>💼</span><span>Portfolio Tracking & Risk Analysis</span></div>
+            <div class="feature-item"><span>📰</span><span>Live News per Stock</span></div>
+            <div class="feature-item"><span>⚡</span><span>Unusual Activity Detection</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Right Panel -->
+<div class="right-panel">
+    <div class="form-box">
+        <div class="mobile-logo"><span>📈</span><h1>StockTracker</h1></div>
+        <div class="form-header">
+            <h2>Welcome back 👋</h2>
+            <p>Sign in to your account to continue</p>
+        </div>
+        <div class="form-group">
+            <label>Email Address</label>
+            <div class="input-wrap">
+                <span class="input-icon">✉️</span>
+                <input type="email" id="email" placeholder="you@example.com"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <div class="input-wrap">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="password" placeholder="Enter your password"/>
+            </div>
+        </div>
+        <button class="btn-primary" onclick="login()" id="loginBtn">Sign In →</button>
+        <div id="msg" class="msg"></div>
+        <div class="divider"><span>or</span></div>
+        <div class="link-text">Don't have an account? <a href="/register">Create one free</a></div>
+    </div>
+</div>
+
+<script>
+    async function login() {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('loginBtn');
+        const msg = document.getElementById('msg');
+        if (!email || !password) { msg.className = 'msg error'; msg.textContent = 'Please fill all fields'; return; }
+        btn.textContent = 'Signing in...'; btn.disabled = true;
+        const res = await fetch('/api/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (data.error) {
+            msg.className = 'msg error'; msg.textContent = data.error;
+            btn.textContent = 'Sign In →'; btn.disabled = false;
+        } else {
+            msg.className = 'msg success'; msg.textContent = '✅ Login successful! Redirecting...';
+            setTimeout(() => window.location.href = '/dashboard', 800);
+        }
+    }
+    document.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

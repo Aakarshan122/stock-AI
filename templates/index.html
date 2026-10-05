@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="bg-orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+</div>
+
+<div class="container">
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="/dashboard" class="nav-brand">
+            <span class="nav-brand-icon">📈</span>
+            <span class="nav-brand-name">StockTracker</span>
+        </a>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🏠 Dashboard</a>
+            <a href="/tracker" class="nav-link active">📈 Tracker</a>
+            <a href="/portfolio" class="nav-link">💼 Portfolio</a>
+            <a href="/logout" class="nav-link danger">Logout</a>
+            <div class="live-pill"><span class="pulse-dot"></span> LIVE</div>
+        </div>
+    </nav>
+
+    <!-- Search -->
+    <div class="search-wrapper">
+        <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="symbolInput" placeholder="Search: AAPL, TCS.NS, RELIANCE.NS, TSLA..." autocomplete="off"/>
+            <button class="search-btn" onclick="getStock()" id="searchBtn">
+                <span id="searchBtnText">Search</span>
+                <span id="searchSpinner" class="btn-spinner hidden"></span>
+            </button>
+        </div>
+        <div class="chips">
+            <span class="chip" onclick="quickSearch('AAPL')">AAPL</span>
+            <span class="chip" onclick="quickSearch('TSLA')">TSLA</span>
+            <span class="chip" onclick="quickSearch('GOOGL')">GOOGL</span>
+            <span class="chip" onclick="quickSearch('NVDA')">NVDA</span>
+            <span class="chip" onclick="quickSearch('TCS.NS')">TCS</span>
+            <span class="chip" onclick="quickSearch('RELIANCE.NS')">RELIANCE</span>
+            <span class="chip" onclick="quickSearch('INFY.NS')">INFOSYS</span>
+        </div>
+    </div>
+
+    <div id="errorMsg" class="toast-error hidden"></div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+
+        <!-- LEFT PANEL -->
+        <div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="glass-card empty-state">
+                <div class="empty-icon">📊</div>
+                <h3>Search a Stock to Begin</h3>
+                <p>Enter a stock symbol above to see real-time price, chart, and set smart alerts</p>
+            </div>
+
+            <!-- Stock Card -->
+            <div id="stockCard" class="glass-card hidden">
+                <div class="stock-top">
+                    <div class="stock-identity">
+                        <span id="stockSymbol" class="sym-tag"></span>
+                        <div id="stockName" class="stock-name"></div>
+                    </div>
+                    <div class="price-block">
+                        <div id="stockPrice" class="price-big"></div>
+                        <div id="stockChange" class="change-pill"></div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-label">Day High</span>
+                        <span id="dayHigh" class="stat-val green"></span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Day Low</span>
+                        <span id="dayLow" class="stat-val red"></span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Volume</span>
+                        <span id="volume" class="stat-val blue"></span>
+                    </div>
+                </div>
+
+                <div class="chart-wrap">
+                    <img id="chartImg" src="" alt="Price Chart" class="chart-img hidden"/>
+                    <div id="chartLoader" class="chart-loader hidden">
+                        <div class="spin-ring"></div>
+                        <span>Loading chart...</span>
+                    </div>
+                </div>
+
+                <div id="triggeredAlerts"></div>
+                <div id="unusualAlerts"></div>
+
+                <!-- News -->
+                <div id="newsSection" class="hidden" style="margin-top:14px;">
+                    <div style="font-size:0.82rem;font-weight:600;color:#666;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">📰 Latest News</div>
+                    <div id="newsList"></div>
+                </div>
+
+                <button class="wl-btn" onclick="addToWatchlist()">⭐ Add to Watchlist</button>
+
+                <div style="margin-top:10px;padding:10px 14px;background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.15);border-radius:10px;font-size:0.78rem;color:#666;">
+                    💡 <strong style="color:#6c63ff;">Smart Alert:</strong> Use volume condition for HIGH PRIORITY alerts on unusual activity!
+                </div>
+            </div>
+
+            <!-- Alert Form -->
+            <div id="alertForm" class="glass-card hidden">
+                <div class="card-header">
+                    <span>🔔</span>
+                    <h3>Set Price Alert</h3>
+                    <span class="badge-pill" id="alertSymbolLabel"></span>
+                </div>
+                <div class="alert-form-grid">
+                    <select id="alertCondition" class="form-select">
+                        <option value="above">📈 Price goes ABOVE</option>
+                        <option value="below">📉 Price goes BELOW</option>
+                        <option value="pct_up">🚀 % Change UP by</option>
+                        <option value="pct_down">💥 % Change DOWN by</option>
+                    </select>
+                    <div class="input-with-prefix">
+                        <span class="input-prefix-icon">$</span>
+                        <input type="number" id="alertTarget" placeholder="Target value" class="form-input"/>
+                    </div>
+                    <select id="volumeCondition" class="form-select">
+                        <option value="">🔔 Normal Alert</option>
+                        <option value="2x">🔴 HIGH PRIORITY (Volume 2x avg)</option>
+                        <option value="3x">🚨 CRITICAL (Volume 3x avg)</option>
+                    </select>
+                    <button class="alert-submit-btn" onclick="setAlert()">Set Alert 🔔</button>
+                </div>
+                <div id="alertMsg" class="form-msg hidden"></div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div>
+
+            <!-- Watchlist -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <span>⭐</span>
+                    <h3>Watchlist</h3>
+                </div>
+                <div id="watchlistItems" class="list-items">
+                    <div class="empty-list">No stocks added yet</div>
+                </div>
+            </div>
+
+            <!-- Active Alerts -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <span>🔔</span>
+                    <h3>Active Alerts</h3>
+                    <span id="alertCount" class="count-dot hidden">0</span>
+                </div>
+                <div id="alertsList" class="list-items">
+                    <div class="empty-list">No alerts set</div>
+                </div>
+            </div>
+
+            <!-- Alert History -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <span>📋</span>
+                    <h3>Alert History</h3>
+                </div>
+                <div id="historyList" class="list-items">
+                    <div class="empty-list">No alerts triggered yet</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="page-footer">Auto-refreshes every 30s • Data from Yahoo Finance</div>
+</div>
+
+<script>
+    let currentSymbol = '';
+
+    function quickSearch(symbol) {
+        document.getElementById('symbolInput').value = symbol;
+        getStock();
+    }
+
+    async function getStock() {
+        const symbol = document.getElementById('symbolInput').value.trim();
+        if (!symbol) return;
+        currentSymbol = symbol.toUpperCase();
+
+        hideError();
+        setLoading(true);
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('chartLoader').classList.remove('hidden');
+        document.getElementById('chartImg').classList.add('hidden');
+        document.getElementById('triggeredAlerts').innerHTML = '';
+        document.getElementById('unusualAlerts').innerHTML = '';
+        document.getElementById('newsSection').classList.add('hidden');
+
+        // STEP 1 — fast price (instant ~1s)
+        const res = await fetch('/api/get_stock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol })
+        });
+        const data = await res.json();
+        setLoading(false);
+
+        if (data.error) {
+            showError(data.error);
+            document.getElementById('emptyState').classList.remove('hidden');
+            return;
+        }
+
+        // Show price card immediately
+        document.getElementById('stockSymbol').textContent = data.symbol;
+        document.getElementById('stockName').textContent = data.name || data.symbol;
+        const priceEl = document.getElementById('stockPrice');
+        priceEl.textContent = '$' + data.price;
+        priceEl.classList.add('price-flash');
+        setTimeout(() => priceEl.classList.remove('price-flash'), 600);
+        const chEl = document.getElementById('stockChange');
+        const isUp = data.change_pct >= 0;
+        chEl.textContent = (isUp ? '▲' : '▼') + ' ' + Math.abs(data.change_pct) + '%';
+        chEl.className = 'change-pill ' + (isUp ? 'up' : 'down');
+        document.getElementById('dayHigh').textContent = '$' + data.high;
+        document.getElementById('dayLow').textContent  = '$' + data.low;
+        document.getElementById('volume').textContent  = Number(data.volume).toLocaleString();
+        document.getElementById('stockCard').classList.remove('hidden');
+        document.getElementById('alertForm').classList.remove('hidden');
+        document.getElementById('alertSymbolLabel').textContent = currentSymbol;
+        loadAlerts();
+        loadHistory();
+
+        // STEP 2 — full data in background (chart + news + alerts)
+        fetch('/api/get_stock_full', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol })
+        }).then(r => r.json()).then(full => {
+            if (full.error) return;
+            // Update name with full name
+            document.getElementById('stockName').textContent = full.name;
+            document.getElementById('dayHigh').textContent = '$' + full.high;
+            document.getElementById('dayLow').textContent  = '$' + full.low;
+            document.getElementById('volume').textContent  = Number(full.volume).toLocaleString();
+            // Chart
+            const img = document.getElementById('chartImg');
+            img.onload = () => {
+                document.getElementById('chartLoader').classList.add('hidden');
+                img.classList.remove('hidden');
+            };
+            img.src = '/' + full.chart + '?t=' + Date.now();
+            // Alerts
+            if (full.triggered && full.triggered.length > 0)
+                document.getElementById('triggeredAlerts').innerHTML = full.triggered.map(a => '<div class="alert-triggered">' + a + '</div>').join('');
+            if (full.unusual && full.unusual.length > 0)
+                document.getElementById('unusualAlerts').innerHTML = full.unusual.map(u => '<div class="alert-unusual">' + u + '</div>').join('');
+            // News
+            if (full.news && full.news.length > 0) {
+                document.getElementById('newsSection').classList.remove('hidden');
+                document.getElementById('newsList').innerHTML = full.news.map(n =>
+                    '<a href="' + n.link + '" target="_blank" class="news-item"><div class="news-title">' + n.title + '</div><div class="news-time">' + n.published + '</div></a>'
+                ).join('');
+            }
+            loadAlerts();
+        }).catch(() => {
+            document.getElementById('chartLoader').classList.add('hidden');
+        });
+    }
+
+    async function setAlert() {
+        const condition = document.getElementById('alertCondition').value;
+        const target = document.getElementById('alertTarget').value;
+        const volume_condition = document.getElementById('volumeCondition').value;
+        if (!target || !currentSymbol) return;
+
+        const res = await fetch('/api/set_alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol: currentSymbol, condition, target, volume_condition })
+        });
+        const data = await res.json();
+
+        const msgEl = document.getElementById('alertMsg');
+        msgEl.textContent = data.message || data.error;
+        msgEl.className = `form-msg ${data.error ? 'error' : 'success'}`;
+        msgEl.classList.remove('hidden');
+        setTimeout(() => msgEl.classList.add('hidden'), 3000);
+        document.getElementById('alertTarget').value = '';
+        loadAlerts();
+    }
+
+    async function loadAlerts() {
+        const res = await fetch('/api/get_alerts');
+        const alerts = await res.json();
+        const div = document.getElementById('alertsList');
+        const active = alerts.filter(a => a.status === 'Active');
+
+        const badge = document.getElementById('alertCount');
+        if (active.length > 0) { badge.textContent = active.length; badge.classList.remove('hidden'); }
+        else { badge.classList.add('hidden'); }
+
+        if (active.length === 0) { div.innerHTML = '<div class="empty-list">No active alerts</div>'; return; }
+
+        const icons = { above: '📈', below: '📉', pct_up: '🚀', pct_down: '💥' };
+        const labels = { above: 'Above', below: 'Below', pct_up: 'Up %', pct_down: 'Down %' };
+        div.innerHTML = active.map(a => `
+            <div class="list-item">
+                <div class="item-left">
+                    <span class="item-icon">${icons[a.condition]}</span>
+                    <div>
+                        <span class="item-title">${a.symbol}</span>
+                        <span class="item-sub">${labels[a.condition]} $${a.target}</span>
+                    </div>
+                </div>
+                <button class="icon-del" onclick="deleteAlert(${a.id})">🗑</button>
+            </div>`).join('');
+    }
+
+    async function deleteAlert(id) {
+        await fetch('/api/delete_alert', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        loadAlerts();
+    }
+
+    async function loadHistory() {
+        const res = await fetch('/api/get_history');
+        const history = await res.json();
+        const div = document.getElementById('historyList');
+        if (history.length === 0) { div.innerHTML = '<div class="empty-list">No alerts triggered yet</div>'; return; }
+        div.innerHTML = history.map(h => `
+            <div class="history-item">
+                <span class="history-msg">${h.message}</span>
+                <span class="history-time">${h.time}</span>
+            </div>`).join('');
+    }
+
+    async function addToWatchlist() {
+        if (!currentSymbol) return;
+        await fetch('/api/watchlist/add', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol: currentSymbol })
+        });
+        loadWatchlist();
+    }
+
+    async function loadWatchlist() {
+        const div = document.getElementById('watchlistItems');
+        div.innerHTML = '<div class="empty-list" style="color:#555">Loading...</div>';
+        const symRes = await fetch('/api/watchlist/get');
+        const symbols = await symRes.json();
+        if (symbols.length === 0) { div.innerHTML = '<div class="empty-list">No stocks added yet</div>'; return; }
+        div.innerHTML = symbols.map(s => `
+            <div class="list-item" id="wl-${s}">
+                <div class="item-left">
+                    <span class="wl-tag" onclick="quickSearch('${s}')">${s}</span>
+                    <span style="font-size:0.78rem;color:#555;">loading...</span>
+                </div>
+                <button class="icon-del" onclick="removeWatchlist('${s}')">&#128465;</button>
+            </div>`).join('');
+        try {
+            const priceRes = await fetch('/api/watchlist_prices');
+            const prices = await priceRes.json();
+            prices.forEach(w => {
+                const row = document.getElementById('wl-' + w.symbol);
+                if (!row) return;
+                const isUp = w.change_pct >= 0;
+                row.querySelector('.item-left').innerHTML =
+                    '<span class="wl-tag" onclick="quickSearch(\'' + w.symbol + '\')">' + w.symbol + '</span>' +
+                    '<span style="font-size:0.82rem;color:#aaa;">$' + w.price + '</span>' +
+                    '<span style="font-size:0.78rem;font-weight:600;color:' + (isUp ? '#00e676' : '#ff5252') + ';">' + (isUp ? '▲' : '▼') + ' ' + Math.abs(w.change_pct) + '%</span>';
+            });
+        } catch(e) {}
+    }
+
+    async function removeWatchlist(symbol) {
+        await fetch('/api/watchlist/remove', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol })
+        });
+        loadWatchlist();
+    }
+
+    function setLoading(on) {
+        document.getElementById('searchBtnText').classList.toggle('hidden', on);
+        document.getElementById('searchSpinner').classList.toggle('hidden', !on);
+        document.getElementById('searchBtn').disabled = on;
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('errorMsg');
+        el.textContent = '⚠️ ' + msg;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function hideError() { document.getElementById('errorMsg').classList.add('hidden'); }
+
+    document.getElementById('symbolInput').addEventListener('keypress', e => {
+        if (e.key === 'Enter') getStock();
+    });
+
+    setInterval(() => { if (currentSymbol) getStock(); }, 30000);
+
+    loadAlerts();
+    loadWatchlist();
+    loadHistory();
+</script>
+</body>
+</html>

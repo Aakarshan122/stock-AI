@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio — StockTracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .page-title{font-size:1.6rem;font-weight:700;margin-bottom:24px}
+        .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+        @media(max-width:800px){.summary-grid{grid-template-columns:1fr 1fr}}
+        .sum-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px}
+        .sum-card span{display:block;font-size:0.75rem;color:#666;margin-bottom:6px}
+        .sum-card strong{font-size:1.3rem;font-weight:700}
+        .add-form-grid{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
+        @media(max-width:800px){.add-form-grid{grid-template-columns:1fr 1fr}}
+        .form-field label{display:block;font-size:0.8rem;color:#888;margin-bottom:5px}
+        .form-field input{width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:0.9rem;font-family:'Inter',sans-serif;box-sizing:border-box}
+        .form-field input:focus{outline:none;border-color:#6c63ff}
+        .mp-preview{margin-top:10px;padding:12px 16px;background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);border-radius:10px;font-size:0.85rem;color:#aaa;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+        .mp-price{font-size:1.15rem;font-weight:700;color:#fff}
+        .mp-chg{font-size:0.82rem;font-weight:600}
+        .mp-name{font-size:0.78rem;color:#555}
+        .add-btn{padding:11px 22px;background:linear-gradient(135deg,#6c63ff,#00d4ff);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap}
+        .holdings-wrap{overflow-x:auto}
+        .htable{width:100%;border-collapse:collapse;min-width:700px}
+        .htable th{text-align:left;padding:10px 12px;font-size:0.75rem;color:#555;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.06);white-space:nowrap}
+        .htable td{padding:10px 12px;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle}
+        .htable tr:hover td{background:rgba(255,255,255,0.02)}
+        .sym-cell{font-weight:700;color:#6c63ff}
+        .green{color:#00e676}.red{color:#ff5252}
+        .del-btn{background:transparent;border:none;color:#ff5252;cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:6px}
+        .del-btn:hover{background:rgba(255,82,82,0.1)}
+        .empty-port{text-align:center;padding:48px;color:#444}
+        .empty-port div{font-size:2.5rem;margin-bottom:12px}
+        .msg-bar{padding:10px 14px;border-radius:8px;margin-top:12px;font-size:0.88rem}
+        .msg-bar.success{background:rgba(0,230,118,0.1);color:#00e676;border:1px solid rgba(0,230,118,0.3)}
+        .msg-bar.error{background:rgba(255,82,82,0.1);color:#ff5252;border:1px solid rgba(255,82,82,0.3)}
+        .hidden{display:none}
+        .toast-wrap{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:14px 18px;border-radius:12px;font-size:0.88rem;font-weight:500;max-width:340px;animation:slideIn 0.3s ease}
+        .toast.up{background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.4);color:#00e676}
+        .toast.down{background:rgba(255,82,82,0.15);border:1px solid rgba(255,82,82,0.4);color:#ff5252}
+        @keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
+        .risk-section{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+        @media(max-width:700px){.risk-section{grid-template-columns:1fr}}
+        .risk-bar-bg{background:rgba(255,255,255,0.08);border-radius:20px;height:8px;overflow:hidden;margin:6px 0 12px}
+        .risk-bar-fill{height:100%;border-radius:20px;transition:width 1s ease}
+        .sector-row{display:flex;justify-content:space-between;font-size:0.82rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#aaa}
+        .insight-item{padding:14px 16px;border-radius:12px;margin-bottom:10px;font-size:0.85rem;line-height:1.6;border-left:3px solid}
+        .insight-item.bullish{background:rgba(0,230,118,0.06);border-color:#00e676;color:#ccc}
+        .insight-item.bearish{background:rgba(255,82,82,0.06);border-color:#ff5252;color:#ccc}
+        .insight-item.neutral{background:rgba(108,99,255,0.06);border-color:#6c63ff;color:#ccc}
+        .insight-sym{font-weight:700;color:#fff;margin-right:6px}
+        .insight-time{font-size:0.72rem;color:#444;margin-top:4px}
+        .agent-dot{width:8px;height:8px;background:#00e676;border-radius:50%;display:inline-block;animation:blink 1.5s infinite}
+        .live-badge{display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;color:#00e676;background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.25);padding:2px 8px;border-radius:20px;margin-left:8px}
+        .live-dot{width:6px;height:6px;background:#00e676;border-radius:50%;animation:blink 1s infinite}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+        .flash-up{animation:fup 0.6s ease}
+        .flash-dn{animation:fdn 0.6s ease}
+        @keyframes fup{0%{background:rgba(0,230,118,0.3)}100%{background:transparent}}
+        @keyframes fdn{0%{background:rgba(255,82,82,0.3)}100%{background:transparent}}
+        .fetching-price{font-size:0.78rem;color:#6c63ff;margin-left:6px}
+        .stock-chip{padding:5px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;font-size:0.78rem;cursor:pointer;color:#aaa;transition:all 0.2s;white-space:nowrap}
+        .stock-chip:hover{background:rgba(108,99,255,0.15);border-color:rgba(108,99,255,0.4);color:#fff}
+        .stock-chip.indian{border-color:rgba(255,153,0,0.2);color:#ffaa44}
+        .stock-chip.indian:hover{background:rgba(255,153,0,0.1);border-color:rgba(255,153,0,0.4);color:#ffcc77}
+        .stock-chip.selected{background:rgba(108,99,255,0.25);border-color:#6c63ff;color:#fff}
+    </style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="container">
+    <nav class="navbar">
+        <a href="/dashboard" class="nav-brand">
+            <span class="nav-brand-icon">📈</span>
+            <span class="nav-brand-name">StockTracker</span>
+        </a>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🏠 Dashboard</a>
+            <a href="/tracker" class="nav-link">📈 Tracker</a>
+            <a href="/portfolio" class="nav-link active">💼 Portfolio</a>
+            <a href="/logout" class="nav-link danger">Logout</a>
+        </div>
+    </nav>
+
+    <div class="page-title">💼 My Portfolio <span class="live-badge"><span class="live-dot"></span> LIVE</span></div>
+
+    <!-- Summary -->
+    <div class="summary-grid">
+        <div class="sum-card"><span>Total Invested</span><strong id="sumInvested">—</strong></div>
+        <div class="sum-card"><span>Current Value</span><strong id="sumCurrent">—</strong></div>
+        <div class="sum-card"><span>Total P&L</span><strong id="sumPnl">—</strong></div>
+        <div class="sum-card"><span>Overall Return</span><strong id="sumReturn">—</strong></div>
+    </div>
+
+    <!-- Add Stock -->
+    <div class="glass-card">
+        <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">➕ Add Stock to Portfolio</div>
+
+        <!-- Popular Stock Chips -->
+        <div style="margin-bottom:14px;">
+            <div style="font-size:0.75rem;color:#555;margin-bottom:8px;">🌍 Popular Stocks — click to select:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <span class="stock-chip" onclick="selectStock('AAPL')">🍎 AAPL</span>
+                <span class="stock-chip" onclick="selectStock('MSFT')">💻 MSFT</span>
+                <span class="stock-chip" onclick="selectStock('GOOGL')">🔍 GOOGL</span>
+                <span class="stock-chip" onclick="selectStock('AMZN')">📦 AMZN</span>
+                <span class="stock-chip" onclick="selectStock('NVDA')">🎮 NVDA</span>
+                <span class="stock-chip" onclick="selectStock('TSLA')">🚗 TSLA</span>
+                <span class="stock-chip" onclick="selectStock('META')">📘 META</span>
+                <span class="stock-chip" onclick="selectStock('NFLX')">🎬 NFLX</span>
+                <span class="stock-chip indian" onclick="selectStock('RELIANCE.NS')">🛢 RELIANCE</span>
+                <span class="stock-chip indian" onclick="selectStock('TCS.NS')">💼 TCS</span>
+                <span class="stock-chip indian" onclick="selectStock('INFY.NS')">🖥 INFOSYS</span>
+                <span class="stock-chip indian" onclick="selectStock('WIPRO.NS')">🔧 WIPRO</span>
+                <span class="stock-chip indian" onclick="selectStock('HDFCBANK.NS')">🏦 HDFC Bank</span>
+                <span class="stock-chip indian" onclick="selectStock('ICICIBANK.NS')">🏦 ICICI</span>
+                <span class="stock-chip indian" onclick="selectStock('SBIN.NS')">🏦 SBI</span>
+                <span class="stock-chip indian" onclick="selectStock('BAJFINANCE.NS')">💰 Bajaj Fin</span>
+                <span class="stock-chip indian" onclick="selectStock('TATAMOTORS.NS')">🚗 TATA Motors</span>
+                <span class="stock-chip indian" onclick="selectStock('ADANIENT.NS')">⚡ Adani</span>
+                <span class="stock-chip indian" onclick="selectStock('HINDUNILVR.NS')">🧴 HUL</span>
+                <span class="stock-chip indian" onclick="selectStock('MARUTI.NS')">🚙 Maruti</span>
+            </div>
+        </div>
+
+        <div class="add-form-grid">
+            <div class="form-field">
+                <label>Stock Symbol <span class="fetching-price hidden" id="fetchingLabel">fetching price...</span></label>
+                <input type="text" id="addSymbol" placeholder="AAPL, TCS.NS, RELIANCE.NS..." oninput="onSymbolType()" autocomplete="off"/>
+            </div>
+            <div class="form-field">
+                <label>Shares</label>
+                <input type="number" id="addShares" placeholder="10" min="0.01" step="0.01"/>
+            </div>
+            <div class="form-field">
+                <label>Buy Price (auto-filled)</label>
+                <input type="number" id="addPrice" placeholder="fetching..." step="0.01"/>
+            </div>
+            <button class="add-btn" onclick="addStock()">Add Stock</button>
+        </div>
+        <div class="mp-preview hidden" id="mpPreview">
+            <span>📊 Market:</span>
+            <span class="mp-price" id="mpPrice">—</span>
+            <span class="mp-chg" id="mpChg"></span>
+            <span class="mp-name" id="mpName"></span>
+        </div>
+        <div id="addMsg" class="msg-bar hidden"></div>
+    </div>
+
+    <!-- Holdings -->
+    <div class="glass-card">
+        <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:16px;">
+            📊 Holdings <span style="font-size:0.75rem;color:#555;font-weight:400;margin-left:8px;">Live prices refresh every 30s</span>
+        </div>
+        <div class="holdings-wrap">
+            <div id="holdingsContent"><div class="empty-port"><div>💼</div><p>No stocks added yet</p></div></div>
+        </div>
+    </div>
+
+    <!-- Risk + Sector -->
+    <div id="riskSection" class="hidden">
+        <div class="risk-section">
+            <div class="glass-card">
+                <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">🧮 Risk Analysis</div>
+                <div id="riskContent"></div>
+            </div>
+            <div class="glass-card">
+                <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">🥧 Sector Allocation</div>
+                <div id="sectorContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Agent -->
+    <div class="glass-card" style="margin-top:20px;">
+        <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:6px;">
+            🤖 AI Agent Insights
+            <span style="margin-left:8px;font-size:0.75rem;color:#555;font-weight:400;">Background agent analyzes your portfolio every 5 mins</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#555;margin-bottom:14px;">
+            <span class="agent-dot"></span> Agent running in background
+        </div>
+        <div id="agentInsights"><div style="color:#444;font-size:0.85rem;padding:10px 0;">Add stocks to portfolio — agent will analyze them automatically.</div></div>
+    </div>
+</div>
+
+<script>
+let portfolioData = null;
+let prevPrices = {};
+let symTimer = null;
+
+// ── Select stock from chip ───────────────────────────────────────────────────
+function selectStock(symbol) {
+    document.getElementById('addSymbol').value = symbol;
+    document.querySelectorAll('.stock-chip').forEach(c => c.classList.remove('selected'));
+    event.target.classList.add('selected');
+    document.getElementById('fetchingLabel').classList.remove('hidden');
+    document.getElementById('addPrice').value = '';
+    document.getElementById('addPrice').placeholder = 'fetching...';
+    fetchAndFillPrice(symbol);
+}
+
+// ── Symbol type → auto fetch + fill price ────────────────────────────────────
+function onSymbolType() {
+    clearTimeout(symTimer);
+    const sym = document.getElementById('addSymbol').value.trim();
+    if (!sym) {
+        document.getElementById('mpPreview').classList.add('hidden');
+        document.getElementById('addPrice').value = '';
+        document.getElementById('addPrice').placeholder = 'fetching...';
+        return;
+    }
+    document.getElementById('fetchingLabel').classList.remove('hidden');
+    symTimer = setTimeout(() => fetchAndFillPrice(sym.toUpperCase()), 600);
+}
+
+async function fetchAndFillPrice(symbol) {
+    try {
+        const res = await fetch('/api/stock_price', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({symbol})
+        });
+        const d = await res.json();
+        document.getElementById('fetchingLabel').classList.add('hidden');
+        if (d.error) {
+            document.getElementById('mpPreview').classList.add('hidden');
+            document.getElementById('addPrice').placeholder = 'not found';
+            return;
+        }
+        // Auto-fill price and update symbol if changed (e.g. WIPRO -> WIPRO.NS)
+        document.getElementById('addPrice').value = d.price;
+        if (d.symbol && d.symbol !== symbol) {
+            document.getElementById('addSymbol').value = d.symbol;
+        }
+        // Show preview
+        const isUp = d.change_pct >= 0;
+        document.getElementById('mpPrice').textContent = '$' + d.price;
+        document.getElementById('mpChg').textContent = (isUp ? '▲ ' : '▼ ') + Math.abs(d.change_pct) + '%';
+        document.getElementById('mpChg').style.color = isUp ? '#00e676' : '#ff5252';
+        document.getElementById('mpName').textContent = d.name;
+        document.getElementById('mpPreview').classList.remove('hidden');
+    } catch(e) {
+        document.getElementById('fetchingLabel').classList.add('hidden');
+    }
+}
+
+// ── Add Stock ─────────────────────────────────────────────────────────────────
+async function addStock() {
+    const symbol    = document.getElementById('addSymbol').value.trim().toUpperCase();
+    const shares    = document.getElementById('addShares').value;
+    const buy_price = document.getElementById('addPrice').value;
+    if (!symbol || !shares || !buy_price) {
+        showMsg('Fill all fields', 'error'); return;
+    }
+    const res = await fetch('/api/portfolio/add', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({symbol, shares, buy_price})
+    });
+    const data = await res.json();
+    showMsg(data.message || data.error, data.error ? 'error' : 'success');
+    if (!data.error) {
+        document.getElementById('addSymbol').value = '';
+        document.getElementById('addShares').value = '';
+        document.getElementById('addPrice').value = '';
+        document.getElementById('mpPreview').classList.add('hidden');
+        loadPortfolio();
+    }
+}
+
+function showMsg(text, type) {
+    const el = document.getElementById('addMsg');
+    el.textContent = text;
+    el.className = 'msg-bar ' + type;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteStock(id) {
+    if (!confirm('Remove this stock?')) return;
+    await fetch('/api/portfolio/delete', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id})
+    });
+    loadPortfolio();
+}
+
+// ── Load Portfolio ────────────────────────────────────────────────────────────
+async function loadPortfolio() {
+    const res = await fetch('/api/portfolio/get');
+    const data = await res.json();
+    portfolioData = data;
+    if (!data || !data.holdings || data.holdings.length === 0) {
+        document.getElementById('holdingsContent').innerHTML = '<div class="empty-port"><div>💼</div><p>No stocks added yet</p></div>';
+        document.getElementById('riskSection').classList.add('hidden');
+        ['sumInvested','sumCurrent','sumPnl','sumReturn'].forEach(id => document.getElementById(id).textContent = '—');
+        return;
+    }
+    updateSummary(data);
+    renderTable(data.holdings);
+    renderRisk(data);
+    document.getElementById('riskSection').classList.remove('hidden');
+}
+
+function updateSummary(data) {
+    const pc = data.total_pnl >= 0 ? '#00e676' : '#ff5252';
+    const rc = data.total_pnl_pct >= 0 ? '#00e676' : '#ff5252';
+    document.getElementById('sumInvested').textContent = '$' + data.total_invested.toLocaleString();
+    document.getElementById('sumCurrent').textContent  = '$' + data.total_current.toLocaleString();
+    document.getElementById('sumPnl').innerHTML     = '<span style="color:'+pc+'">'+(data.total_pnl>=0?'+':'')+'$'+data.total_pnl.toLocaleString()+'</span>';
+    document.getElementById('sumReturn').innerHTML  = '<span style="color:'+rc+'">'+(data.total_pnl_pct>=0?'+':'')+data.total_pnl_pct+'%</span>';
+}
+
+function renderTable(holdings) {
+    document.getElementById('holdingsContent').innerHTML =
+        '<table class="htable"><thead><tr>' +
+        '<th>Symbol</th><th>Shares</th><th>Buy Price</th><th>Market Price</th>' +
+        '<th>Invested</th><th>Current Val</th><th>P&L</th><th>Return</th><th>Today</th><th></th>' +
+        '</tr></thead><tbody>' +
+        holdings.map(h =>
+            '<tr id="row-'+h.id+'">' +
+            '<td class="sym-cell">'+h.symbol+'</td>' +
+            '<td>'+h.shares+'</td>' +
+            '<td>$'+h.buy_price+'</td>' +
+            '<td id="lp-'+h.id+'" class="'+(h.change_pct>=0?'green':'red')+'">$'+h.current_price+'</td>' +
+            '<td>$'+h.invested.toLocaleString()+'</td>' +
+            '<td id="cv-'+h.id+'">$'+h.current.toLocaleString()+'</td>' +
+            '<td id="pnl-'+h.id+'" class="'+(h.pnl>=0?'green':'red')+'">'+(h.pnl>=0?'+':'')+'$'+h.pnl+'</td>' +
+            '<td id="pp-'+h.id+'" class="'+(h.pnl_pct>=0?'green':'red')+'">'+(h.pnl_pct>=0?'+':'')+h.pnl_pct+'%</td>' +
+            '<td id="td-'+h.id+'" class="'+(h.change_pct>=0?'green':'red')+'">'+(h.change_pct>=0?'▲':'▼')+Math.abs(h.change_pct)+'%</td>' +
+            '<td><button class="del-btn" onclick="deleteStock('+h.id+')">🗑</button></td>' +
+            '</tr>'
+        ).join('') +
+        '</tbody></table>';
+}
+
+function renderRisk(data) {
+    const rc = data.risk_score < 4 ? '#00e676' : data.risk_score < 7 ? '#ff9800' : '#ff5252';
+    document.getElementById('riskContent').innerHTML =
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
+        '<span style="font-size:0.85rem;color:#aaa;">Risk Score</span>' +
+        '<strong style="color:'+rc+'">'+data.risk_score+'/10 — '+data.risk_label+'</strong></div>' +
+        '<div class="risk-bar-bg"><div class="risk-bar-fill" style="width:'+(data.risk_score*10)+'%;background:'+rc+'"></div></div>' +
+        '<div style="font-size:0.82rem;color:#666;margin-top:8px;">Tech Exposure: <span style="color:#ccc">'+data.tech_pct+'%</span></div>' +
+        '<div style="font-size:0.82rem;color:#666;margin-top:4px;">Stocks: <span style="color:#ccc">'+data.num_stocks+'</span></div>';
+    document.getElementById('sectorContent').innerHTML = data.sector_alloc.length
+        ? data.sector_alloc.map(s => '<div class="sector-row"><span>'+s.sector+'</span><span style="color:#ccc;font-weight:600;">'+s.pct+'%</span></div>').join('')
+        : '<div style="color:#444;font-size:0.85rem;">No sector data</div>';
+}
+
+// ── Live Price Refresh ────────────────────────────────────────────────────────
+async function refreshLive() {
+    if (!portfolioData || !portfolioData.holdings || !portfolioData.holdings.length) return;
+    const symbols = [...new Set(portfolioData.holdings.map(h => h.symbol))];
+    try {
+        const res = await fetch('/api/portfolio/live', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbols})
+        });
+        const prices = await res.json();
+        portfolioData.holdings.forEach(h => {
+            const p = prices[h.symbol];
+            if (!p || !p.price) return;
+            const old = prevPrices[h.symbol] || h.current_price;
+            const np  = p.price;
+            const isUp = p.change_pct >= 0;
+            const lp = document.getElementById('lp-'+h.id);
+            if (lp && np !== old) {
+                lp.classList.remove('flash-up','flash-dn');
+                void lp.offsetWidth;
+                lp.classList.add(np > old ? 'flash-up' : 'flash-dn');
+                const gain = ((np - h.buy_price) / h.buy_price * 100).toFixed(2);
+                if (np > old && gain > 0) showToast('📈 '+h.symbol+' ▲ $'+np+' (+'+gain+'% from buy)', 'up');
+                else if (np < old && gain < -2) showToast('📉 '+h.symbol+' ▼ $'+np+' ('+gain+'% from buy)', 'down');
+            }
+            prevPrices[h.symbol] = np;
+            if (lp) { lp.textContent = '$'+np; lp.className = isUp ? 'green' : 'red'; }
+            const cv = document.getElementById('cv-'+h.id);
+            if (cv) cv.textContent = '$'+(h.shares*np).toFixed(2);
+            const newPnl = (h.shares*np) - h.invested;
+            const newPct = ((newPnl/h.invested)*100).toFixed(2);
+            const pnlEl = document.getElementById('pnl-'+h.id);
+            if (pnlEl) { pnlEl.textContent = (newPnl>=0?'+':'')+'$'+newPnl.toFixed(2); pnlEl.className = newPnl>=0?'green':'red'; }
+            const ppEl = document.getElementById('pp-'+h.id);
+            if (ppEl) { ppEl.textContent = (newPct>=0?'+':'')+newPct+'%'; ppEl.className = newPct>=0?'green':'red'; }
+            const tdEl = document.getElementById('td-'+h.id);
+            if (tdEl) { tdEl.textContent = (isUp?'▲':'▼')+Math.abs(p.change_pct)+'%'; tdEl.className = isUp?'green':'red'; }
+        });
+    } catch(e) {}
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+const shown = new Set();
+function showToast(msg, type) {
+    if (shown.has(msg)) return;
+    shown.add(msg); setTimeout(() => shown.delete(msg), 60000);
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    document.getElementById('toastWrap').appendChild(el);
+    setTimeout(() => el.remove(), 6000);
+}
+
+// ── AI Agent Insights ─────────────────────────────────────────────────────────
+async function loadInsights() {
+    try {
+        const res = await fetch('/api/agent_insights');
+        const list = await res.json();
+        const div = document.getElementById('agentInsights');
+        if (!list.length) {
+            div.innerHTML = '<div style="color:#444;font-size:0.85rem;padding:10px 0;">Agent is analyzing your portfolio... check back in a few minutes.</div>';
+            return;
+        }
+        div.innerHTML = list.map(i =>
+            '<div class="insight-item '+(i.type==='bullish'?'bullish':i.type==='bearish'?'bearish':'neutral')+'">' +
+            '<span class="insight-sym">'+i.symbol+'</span>'+i.insight +
+            '<div class="insight-time">🕐 '+i.time+'</div></div>'
+        ).join('');
+    } catch(e) {}
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadPortfolio();
+loadInsights();
+setInterval(refreshLive, 30000);
+setInterval(loadInsights, 300000);
+</script>
+</body>
+</html>

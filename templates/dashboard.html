@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — StockTracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .nav-links { display: flex; gap: 8px; }
+        .nav-link { padding: 8px 18px; border-radius: 8px; font-size: 0.88rem; font-weight: 500; cursor: pointer; text-decoration: none; color: #aaa; border: 1px solid transparent; transition: all 0.2s; }
+        .nav-link:hover, .nav-link.active { background: rgba(108,99,255,0.15); color: #6c63ff; border-color: rgba(108,99,255,0.3); }
+        .nav-link.logout { color: #ff5252; }
+        .nav-link.logout:hover { background: rgba(255,82,82,0.1); border-color: rgba(255,82,82,0.3); }
+        .greeting-card { background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(0,212,255,0.1)); border: 1px solid rgba(108,99,255,0.3); border-radius: 20px; padding: 28px 32px; margin-bottom: 24px; }
+        .greeting-card h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+        .greeting-card p { color: #888; font-size: 0.9rem; }
+        .portfolio-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 20px; }
+        .p-stat { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 14px 18px; }
+        .p-stat span { display: block; font-size: 0.75rem; color: #666; margin-bottom: 4px; }
+        .p-stat strong { font-size: 1.2rem; font-weight: 700; }
+        .dashboard-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+        @media(max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } .portfolio-strip { grid-template-columns: 1fr 1fr; } }
+        .section-title { font-size: 0.9rem; font-weight: 600; color: #aaa; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .market-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 8px; transition: background 0.2s; }
+        .market-row:hover { background: rgba(255,255,255,0.06); }
+        .market-name { font-size: 0.88rem; font-weight: 500; }
+        .market-price { font-size: 0.85rem; color: #aaa; }
+        .market-chg { font-size: 0.85rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
+        .market-chg.up { background: rgba(0,230,118,0.12); color: #00e676; }
+        .market-chg.down { background: rgba(255,82,82,0.12); color: #ff5252; }
+        .wl-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s; }
+        .wl-row:hover { background: rgba(108,99,255,0.1); }
+        .wl-sym { font-weight: 700; color: #6c63ff; font-size: 0.9rem; }
+        .wl-price { font-size: 0.85rem; color: #aaa; }
+        .wl-chg { font-size: 0.85rem; font-weight: 600; }
+        .wl-chg.up { color: #00e676; }
+        .wl-chg.down { color: #ff5252; }
+        .risk-bar-wrap { margin-top: 10px; }
+        .risk-bar-bg { background: rgba(255,255,255,0.08); border-radius: 20px; height: 8px; overflow: hidden; margin: 8px 0; }
+        .risk-bar-fill { height: 100%; border-radius: 20px; transition: width 1s ease; }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        .qa-btn { padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #ccc; font-size: 0.88rem; cursor: pointer; text-align: center; text-decoration: none; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+        .qa-btn:hover { background: rgba(108,99,255,0.15); border-color: rgba(108,99,255,0.3); color: #fff; }
+        .loader-text { color: #444; font-size: 0.85rem; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+<div class="bg-orbs">
+    <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+</div>
+<div class="container">
+
+    <!-- Nav -->
+    <nav class="navbar">
+        <a href="/dashboard" class="nav-brand">
+            <span class="nav-brand-icon">📈</span>
+            <span class="nav-brand-name">StockTracker</span>
+        </a>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link active">🏠 Dashboard</a>
+            <a href="/tracker" class="nav-link">📈 Tracker</a>
+            <a href="/portfolio" class="nav-link">💼 Portfolio</a>
+            <a href="/logout" class="nav-link danger">Logout</a>
+        </div>
+    </nav>
+
+    <!-- Greeting -->
+    <div class="greeting-card">
+        <h2 id="greetingText">Loading...</h2>
+        <p id="greetingDate"></p>
+        <div class="portfolio-strip" id="portfolioStrip">
+            <div class="p-stat"><span>Portfolio Value</span><strong id="portValue">—</strong></div>
+            <div class="p-stat"><span>Today's P&L</span><strong id="todayPnl">—</strong></div>
+            <div class="p-stat"><span>Overall Return</span><strong id="overallReturn">—</strong></div>
+        </div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
+
+        <!-- Left -->
+        <div>
+            <!-- Global Markets -->
+            <div class="glass-card">
+                <div class="section-title">🌎 Global Markets</div>
+                <div id="marketsList"><div class="loader-text">Loading markets...</div></div>
+            </div>
+
+            <!-- Watchlist -->
+            <div class="glass-card">
+                <div class="section-title">⭐ My Watchlist <span style="margin-left:auto;font-size:0.78rem;color:#555;">Click to track</span></div>
+                <div id="watchlistDash"><div class="loader-text">Loading...</div></div>
+            </div>
+        </div>
+
+        <!-- Right -->
+        <div>
+            <!-- Quick Actions -->
+            <div class="glass-card">
+                <div class="section-title">⚡ Quick Actions</div>
+                <div class="quick-actions">
+                    <a href="/tracker" class="qa-btn">📈 Track Stock</a>
+                    <a href="/portfolio" class="qa-btn">💼 Portfolio</a>
+                    <a href="/tracker" class="qa-btn">🔔 Set Alert</a>
+                    <a href="/portfolio" class="qa-btn">➕ Add Stock</a>
+                </div>
+            </div>
+
+            <!-- Risk Analysis -->
+            <div class="glass-card" id="riskCard">
+                <div class="section-title">🧮 Portfolio Risk</div>
+                <div id="riskContent"><div class="loader-text">Add stocks to see risk analysis</div></div>
+            </div>
+
+            <!-- Market Movers hint -->
+            <div class="glass-card">
+                <div class="section-title">🔥 Market Movers</div>
+                <div style="display:flex;flex-direction:column;gap:8px;" id="moversSection">
+                    <div class="loader-text">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('greetingDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    async function loadGreeting() {
+        const res = await fetch('/api/dashboard_data');
+        const data = await res.json();
+        document.getElementById('greetingText').textContent = `${data.greeting}, ${data.name} 👋`;
+    }
+
+    async function loadMarkets() {
+        const res = await fetch('/api/markets_data');
+        const markets = await res.json();
+        const mDiv = document.getElementById('marketsList');
+        mDiv.innerHTML = markets.map(m => `
+            <div class="market-row">
+                <span class="market-name">${m.name}</span>
+                <span class="market-price">${m.price.toLocaleString()}</span>
+                <span class="market-chg ${m.change >= 0 ? 'up' : 'down'}">${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}%</span>
+            </div>
+        `).join('');
+        const movers = [...markets].sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 3);
+        document.getElementById('moversSection').innerHTML = movers.map(m => `
+            <div class="market-row">
+                <span class="market-name">${m.name}</span>
+                <span class="market-chg ${m.change >= 0 ? 'up' : 'down'}">${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}%</span>
+            </div>
+        `).join('');
+    }
+
+    async function loadWatchlist() {
+        const res = await fetch('/api/watchlist_prices');
+        const list = await res.json();
+        const wDiv = document.getElementById('watchlistDash');
+        if (list.length === 0) {
+            wDiv.innerHTML = '<div class="loader-text">No stocks in watchlist. <a href="/tracker" style="color:#6c63ff;">Add some →</a></div>';
+        } else {
+            wDiv.innerHTML = list.map(w => `
+                <div class="wl-row" onclick="window.location.href='/tracker'">
+                    <span class="wl-sym">${w.symbol}</span>
+                    <span class="wl-price">$${w.price}</span>
+                    <span class="wl-chg ${w.change_pct >= 0 ? 'up' : 'down'}">${w.change_pct >= 0 ? '▲' : '▼'} ${Math.abs(w.change_pct)}%</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    async function loadPortfolioStrip() {
+        const res = await fetch('/api/portfolio_summary');
+        const p = await res.json();
+        if (p && p.holdings && p.holdings.length > 0) {
+            const pnlColor = p.today_pnl >= 0 ? '#00e676' : '#ff5252';
+            const retColor = p.total_pnl_pct >= 0 ? '#00e676' : '#ff5252';
+            document.getElementById('portValue').innerHTML = `<span style="color:#fff">$${p.total_current.toLocaleString()}</span>`;
+            document.getElementById('todayPnl').innerHTML = `<span style="color:${pnlColor}">${p.today_pnl >= 0 ? '+' : ''}$${p.today_pnl.toFixed(2)}</span>`;
+            document.getElementById('overallReturn').innerHTML = `<span style="color:${retColor}">${p.total_pnl_pct >= 0 ? '+' : ''}${p.total_pnl_pct}%</span>`;
+            const riskColor = p.risk_score < 4 ? '#00e676' : p.risk_score < 7 ? '#ff9800' : '#ff5252';
+            document.getElementById('riskContent').innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:0.88rem;color:#aaa;">Risk Score</span>
+                    <strong style="color:${riskColor};font-size:1.1rem;">${p.risk_score} / 10 — ${p.risk_label}</strong>
+                </div>
+                <div class="risk-bar-bg"><div class="risk-bar-fill" style="width:${p.risk_score*10}%;background:${riskColor};"></div></div>
+                <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#666;"><span>Tech Exposure</span><span style="color:#ccc;">${p.tech_pct}%</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#666;"><span>Stocks Held</span><span style="color:#ccc;">${p.num_stocks}</span></div>
+                    ${p.sector_alloc.map(s => `<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#666;"><span>${s.sector}</span><span style="color:#ccc;">${s.pct}%</span></div>`).join('')}
+                </div>`;
+        } else {
+            document.getElementById('portValue').textContent = '$0';
+            document.getElementById('todayPnl').textContent = '$0';
+            document.getElementById('overallReturn').textContent = '0%';
+            document.getElementById('riskContent').innerHTML = '<div class="loader-text">Add stocks to see risk analysis</div>';
+        }
+    }
+
+    // Load greeting instantly, rest in background
+    loadGreeting();
+    loadMarkets();
+    loadWatchlist();
+    loadPortfolioStrip();
+    setInterval(loadMarkets, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — StockTracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #05050f; color: #f0f0f0; font-family: 'Inter', sans-serif; min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+        @media(max-width: 768px) { body { grid-template-columns: 1fr; } .left-panel { display: none; } }
+        .left-panel { background: linear-gradient(135deg, #0a1628 0%, #1a0a2e 50%, #0d0d1f 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; position: relative; overflow: hidden; }
+        .left-panel::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 30%, rgba(0,212,255,0.2) 0%, transparent 60%), radial-gradient(ellipse at 30% 70%, rgba(108,99,255,0.15) 0%, transparent 50%); }
+        .grid-lines { position: absolute; inset: 0; opacity: 0.03; background-image: linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px); background-size: 40px 40px; }
+        .left-content { position: relative; z-index: 1; text-align: center; }
+        .left-logo { font-size: 4rem; margin-bottom: 20px; }
+        .left-title { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #00d4ff, #6c63ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+        .left-sub { color: #555; font-size: 1rem; line-height: 1.7; max-width: 320px; }
+        .steps { margin-top: 40px; display: flex; flex-direction: column; gap: 16px; text-align: left; }
+        .step { display: flex; align-items: center; gap: 14px; }
+        .step-num { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6c63ff, #00d4ff); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+        .step-text { color: #777; font-size: 0.88rem; }
+        .right-panel { display: flex; align-items: center; justify-content: center; padding: 40px 24px; background: #05050f; }
+        .form-box { width: 100%; max-width: 400px; }
+        .form-header { margin-bottom: 32px; }
+        .form-header h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+        .form-header p { color: #555; font-size: 0.9rem; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.82rem; font-weight: 500; color: #888; margin-bottom: 8px; letter-spacing: 0.3px; text-transform: uppercase; }
+        .input-wrap { position: relative; }
+        .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 1rem; opacity: 0.4; }
+        .form-group input { width: 100%; padding: 13px 14px 13px 42px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        .form-group input:focus { outline: none; border-color: #6c63ff; background: rgba(108,99,255,0.06); box-shadow: 0 0 0 3px rgba(108,99,255,0.1); }
+        .form-group input::placeholder { color: #333; }
+        .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #6c63ff, #00d4ff); color: #fff; border: none; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; margin-top: 8px; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(108,99,255,0.4); }
+        .divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+        .divider span { color: #444; font-size: 0.8rem; }
+        .link-text { text-align: center; font-size: 0.88rem; color: #555; }
+        .link-text a { color: #6c63ff; text-decoration: none; font-weight: 500; }
+        .msg { padding: 12px 16px; border-radius: 10px; margin-top: 14px; font-size: 0.88rem; text-align: center; display: none; }
+        .msg.error { background: rgba(255,82,82,0.1); color: #ff5252; border: 1px solid rgba(255,82,82,0.2); display: block; }
+        .msg.success { background: rgba(0,230,118,0.1); color: #00e676; border: 1px solid rgba(0,230,118,0.2); display: block; }
+        .mobile-logo { display: none; text-align: center; margin-bottom: 32px; }
+        @media(max-width: 768px) { .mobile-logo { display: block; } }
+        .mobile-logo span { font-size: 2.5rem; }
+        .mobile-logo h1 { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #6c63ff, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 8px; }
+    </style>
+</head>
+<body>
+<div class="left-panel">
+    <div class="grid-lines"></div>
+    <div class="left-content">
+        <div class="left-logo">🚀</div>
+        <div class="left-title">Get Started Free</div>
+        <p class="left-sub">Join thousands of investors tracking their portfolio with StockTracker.</p>
+        <div class="steps">
+            <div class="step"><div class="step-num">1</div><span class="step-text">Create your free account</span></div>
+            <div class="step"><div class="step-num">2</div><span class="step-text">Add stocks to your watchlist</span></div>
+            <div class="step"><div class="step-num">3</div><span class="step-text">Set smart price alerts</span></div>
+            <div class="step"><div class="step-num">4</div><span class="step-text">Track your portfolio P&L</span></div>
+        </div>
+    </div>
+</div>
+<div class="right-panel">
+    <div class="form-box">
+        <div class="mobile-logo"><span>📈</span><h1>StockTracker</h1></div>
+        <div class="form-header">
+            <h2>Create account ✨</h2>
+            <p>Start tracking stocks for free today</p>
+        </div>
+        <div class="form-group">
+            <label>Full Name</label>
+            <div class="input-wrap">
+                <span class="input-icon">👤</span>
+                <input type="text" id="name" placeholder="Your name"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Email Address</label>
+            <div class="input-wrap">
+                <span class="input-icon">✉️</span>
+                <input type="email" id="email" placeholder="you@example.com"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <div class="input-wrap">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="password" placeholder="Min 6 characters"/>
+            </div>
+        </div>
+        <button class="btn-primary" onclick="register()" id="regBtn">Create Account →</button>
+        <div id="msg" class="msg"></div>
+        <div class="divider"><span>or</span></div>
+        <div class="link-text">Already have an account? <a href="/login">Sign in</a></div>
+    </div>
+</div>
+<script>
+    async function register() {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('regBtn');
+        const msg = document.getElementById('msg');
+        if (!name || !email || !password) { msg.className = 'msg error'; msg.textContent = 'Please fill all fields'; return; }
+        if (password.length < 6) { msg.className = 'msg error'; msg.textContent = 'Password must be at least 6 characters'; return; }
+        btn.textContent = 'Creating...'; btn.disabled = true;
+        const res = await fetch('/api/register', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (data.error) {
+            msg.className = 'msg error'; msg.textContent = data.error;
+            btn.textContent = 'Create Account →'; btn.disabled = false;
+        } else {
+            msg.className = 'msg success'; msg.textContent = '✅ Account created! Redirecting to login...';
+            setTimeout(() => window.location.href = '/login', 1000);
+        }
+    }
+</script>
+</body>
+</html>
