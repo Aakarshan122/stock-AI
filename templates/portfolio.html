@@ -68,6 +68,9 @@
         .stock-chip.indian{border-color:rgba(255,153,0,0.2);color:#ffaa44}
         .stock-chip.indian:hover{background:rgba(255,153,0,0.1);border-color:rgba(255,153,0,0.4);color:#ffcc77}
         .stock-chip.selected{background:rgba(108,99,255,0.25);border-color:#6c63ff;color:#fff}
+        .rp-btn{padding:8px 18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#888;font-size:0.85rem;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
+        .rp-btn.active{background:rgba(108,99,255,0.2);border-color:#6c63ff;color:#fff;font-weight:600;}
+        .rp-suggestion{padding:10px 14px;background:rgba(108,99,255,0.06);border-left:3px solid #6c63ff;border-radius:0 8px 8px 0;margin-bottom:8px;font-size:0.83rem;color:#ccc;}
     </style>
 </head>
 <body>
@@ -84,6 +87,8 @@
             <a href="/dashboard" class="nav-link">🏠 Dashboard</a>
             <a href="/tracker" class="nav-link">📈 Tracker</a>
             <a href="/portfolio" class="nav-link active">💼 Portfolio</a>
+            <a href="/compare" class="nav-link">⚖️ Compare</a>
+            <a href="/paper" class="nav-link">🏆 Paper Trade</a>
             <a href="/logout" class="nav-link danger">Logout</a>
             <div class="live-pill"><span class="pulse-dot"></span> LIVE</div>
             <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">⏸ Loading</div>
@@ -177,6 +182,17 @@
                 <div id="sectorContent"></div>
             </div>
         </div>
+    </div>
+
+    <!-- Risk Profiler -->
+    <div class="glass-card" style="margin-top:20px;">
+        <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">🧠 AI Risk Profiler <span style="font-size:0.72rem;color:#444;font-weight:400;margin-left:6px;">General educational analysis only</span></div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+            <button class="rp-btn active" data-p="conservative" onclick="selectProfile(this)">🟢 Conservative</button>
+            <button class="rp-btn" data-p="moderate" onclick="selectProfile(this)">🟡 Moderate</button>
+            <button class="rp-btn" data-p="aggressive" onclick="selectProfile(this)">🔴 Aggressive</button>
+        </div>
+        <div id="riskProfileResult"><div style="color:#444;font-size:0.85rem;">Select a risk profile to analyze your portfolio.</div></div>
     </div>
 
     <!-- AI Agent -->
@@ -432,6 +448,26 @@ loadPortfolio();
 loadInsights();
 setInterval(refreshLive, 30000);
 setInterval(loadInsights, 300000);
+
+// ── Risk Profiler ───────────────────────────────────────────────────────────
+let activeProfile = 'conservative';
+function selectProfile(btn) {
+    document.querySelectorAll('.rp-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeProfile = btn.dataset.p;
+    loadRiskProfile();
+}
+async function loadRiskProfile() {
+    const res = await fetch('/api/risk_profile', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({profile: activeProfile})
+    });
+    const d = await res.json();
+    const rc = d.risk_score < 4 ? '#00e676' : d.risk_score < 7 ? '#ff9800' : '#ff5252';
+    document.getElementById('riskProfileResult').innerHTML =
+        `<div style="padding:12px 16px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:12px;font-size:0.88rem;color:#ccc;border-left:3px solid ${rc};">${d.analysis}</div>` +
+        (d.suggestions.length ? d.suggestions.map(s => `<div class="rp-suggestion">${s}</div>`).join('') : '');
+}
 
 async function loadMarketStatus() {
     const r = await fetch('/api/market_status');

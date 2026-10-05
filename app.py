@@ -727,5 +727,354 @@ def agent_insights():
     conn.close()
     return jsonify([{'symbol': r[0], 'insight': r[1], 'type': r[2], 'time': r[3]} for r in rows])
 
+# ── Technical Indicators ─────────────────────────────────────────────────────
+@app.route('/api/indicators', methods=['POST'])
+@login_required
+def get_indicators():
+    symbol = request.json.get('symbol', '').strip().upper()
+    indicators = request.json.get('indicators', ['RSI','MACD','MA','EMA','BB'])
+    try:
+        t = yf.Ticker(symbol)
+        hist = t.history(period='90d')
+        if hist.empty or len(hist) < 20:
+            return jsonify({'error': 'Not enough data'}), 404
+        closes = hist['Close']
+        result = {'symbol': symbol, 'dates': [str(d.date()) for d in hist.index], 'closes': [round(c,2) for c in closes]}
+        if 'RSI' in indicators:
+            delta = closes.diff()
+            gain = delta.clip(lower=0).rolling(14).mean()
+            loss = (-delta.clip(upper=0)).rolling(14).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            result['rsi'] = [round(v,2) if not pd.isna(v) else None for v in rsi]
+            result['rsi_current'] = round(rsi.iloc[-1], 2) if not pd.isna(rsi.iloc[-1]) else None
+        if 'MACD' in indicators:
+            ema12 = closes.ewm(span=12).mean()
+            ema26 = closes.ewm(span=26).mean()
+            macd = ema12 - ema26
+            signal = macd.ewm(span=9).mean()
+            macd_hist = macd - signal
+            result['macd'] = [round(v,4) for v in macd]
+            result['macd_signal'] = [round(v,4) for v in signal]
+            result['macd_hist'] = [round(v,4) for v in macd_hist]
+            result['macd_current'] = round(macd.iloc[-1],4)
+            result['macd_signal_current'] = round(signal.iloc[-1],4)
+        if 'MA' in indicators:
+            ma20 = closes.rolling(20).mean()
+            ma50 = closes.rolling(50).mean() if len(closes) >= 50 else pd.Series([None]*len(closes))
+            result['ma20'] = [round(v,2) if not pd.isna(v) else None for v in ma20]
+            result['ma50'] = [round(v,2) if not pd.isna(v) else None for v in ma50]
+        if 'EMA' in indicators:
+            ema9  = closes.ewm(span=9).mean()
+            ema21 = closes.ewm(span=21).mean()
+            result['ema9']  = [round(v,2) for v in ema9]
+            result['ema21'] = [round(v,2) for v in ema21]
+        if 'BB' in indicators:
+            ma20 = closes.rolling(20).mean()
+            std20 = closes.rolling(20).std()
+            result['bb_upper'] = [round(v,2) if not pd.isna(v) else None for v in (ma20 + 2*std20)]
+            result['bb_lower'] = [round(v,2) if not pd.isna(v) else None for v in (ma20 - 2*std20)]
+            result['bb_mid']   = [round(v,2) if not pd.isna(v) else None for v in ma20]
+        if 'SR' in indicators:
+            resistance = round(float(hist['High'].rolling(20).max().iloc[-1]), 2)
+            support    = round(float(hist['Low'].rolling(20).min().iloc[-1]),  2)
+            result['support'] = support
+            result['resistance'] = resistance
+        if 'VOL' in indicators:
+            avg_vol = hist['Volume'].rolling(20).mean()
+            result['volumes'] = [int(v) for v in hist['Volume']]
+            result['avg_vol'] = [int(v) if not pd.isna(v) else None for v in avg_vol]
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ── Stock Comparison ──────────────────────────────────────────────────────────
+@app.route('/api/compare', methods=['POST'])
+@login_required
+def compare_stocks():
+    symbols = request.json.get('symbols', [])
+    if len(symbols) < 2:
+        return jsonify({'error': 'Need 2 symbols'}), 400
+    result = []
+    for sym in symbols[:2]:
+        try:
+            t = yf.Ticker(sym)
+            info = t.info
+            hist = t.history(period='1y')
+            price = info.get('currentPrice') or info.get('regularMarketPrice', 0)
+            prev  = info.get('previousClose', price)
+            chg   = round((price - prev) / prev * 100, 2) if prev else 0
+            yr_start = float(hist['Close'].iloc[0]) if not hist.empty else price
+            yr_return = round((price - yr_start) / yr_start * 100, 2) if yr_start else 0
+            result.append({
+                'symbol': sym.upper(), 'name': info.get('longName', sym),
+                'price': round(price, 2), 'change_pct': chg,
+                'pe_ratio': round(info.get('trailingPE', 0) or 0, 2),
+                'pb_ratio': round(info.get('priceToBook', 0) or 0, 2),
+                'roe': round((info.get('returnOnEquity', 0) or 0) * 100, 2),
+                'revenue': info.get('totalRevenue', 0),
+                'net_income': info.get('netIncomeToCommon', 0),
+                'market_cap': info.get('marketCap', 0),
+                'div_yield': round((info.get('dividendYield', 0) or 0) * 100, 2),
+                'beta': round(info.get('beta', 0) or 0, 2),
+                'sector': info.get('sector', 'N/A'),
+                'yr_return': yr_return,
+                '52w_high': round(info.get('fiftyTwoWeekHigh', 0), 2),
+                '52w_low':  round(info.get('fiftyTwoWeekLow', 0), 2),
+                'analyst_rating': info.get('recommendationKey', 'N/A').upper(),
+            })
+        except Exception as e:
+            result.append({'symbol': sym.upper(), 'error': str(e)})
+    verdict = []
+    if len(result) == 2 and 'error' not in result[0] and 'error' not in result[1]:
+        a, b = result[0], result[1]
+        if a['pe_ratio'] and b['pe_ratio']:
+            cheaper = a['symbol'] if a['pe_ratio'] < b['pe_ratio'] else b['symbol']
+            verdict.append(f"💰 Better Valuation: {cheaper} (lower P/E)")
+        if a['roe'] and b['roe']:
+            stronger = a['symbol'] if a['roe'] > b['roe'] else b['symbol']
+            verdict.append(f"💪 Stronger Profitability: {stronger} (higher ROE)")
+        if a['yr_return'] != b['yr_return']:
+            better = a['symbol'] if a['yr_return'] > b['yr_return'] else b['symbol']
+            verdict.append(f"📈 Better 1Y Return: {better} ({max(a['yr_return'], b['yr_return'])}%)")
+        if a['beta'] and b['beta']:
+            safer = a['symbol'] if a['beta'] < b['beta'] else b['symbol']
+            verdict.append(f"🛡️ Lower Risk: {safer} (beta {min(a['beta'], b['beta'])})")
+    return jsonify({'stocks': result, 'verdict': verdict})
+
+# ── Sector Analysis ───────────────────────────────────────────────────────────
+SECTOR_STOCKS = {
+    'IT':      ['TCS.NS','INFY.NS','WIPRO.NS','HCLTECH.NS','LTIM.NS'],
+    'Banking': ['HDFCBANK.NS','ICICIBANK.NS','SBIN.NS','KOTAKBANK.NS','AXISBANK.NS'],
+    'Pharma':  ['SUNPHARMA.NS','DRREDDY.NS','CIPLA.NS'],
+    'Auto':    ['TATAMOTORS.NS','MARUTI.NS','BAJAJ-AUTO.NS'],
+    'Energy':  ['RELIANCE.NS','ONGC.NS','NTPC.NS'],
+}
+
+@app.route('/api/sectors')
+@login_required
+def sector_analysis():
+    result = []
+    for sector, stocks in SECTOR_STOCKS.items():
+        changes = []
+        for sym in stocks:
+            try:
+                t = yf.Ticker(sym)
+                fi = t.fast_info
+                price = getattr(fi, 'last_price', 0) or 0
+                prev  = getattr(fi, 'previous_close', price) or price
+                chg   = round((price - prev) / prev * 100, 2) if prev else 0
+                changes.append({'symbol': sym, 'change': chg})
+            except: pass
+        avg_chg = round(sum(c['change'] for c in changes) / len(changes), 2) if changes else 0
+        result.append({'sector': sector, 'change': avg_chg, 'stocks': changes})
+    return jsonify(result)
+
+@app.route('/api/sector_stocks', methods=['POST'])
+@login_required
+def sector_stocks_detail():
+    sector = request.json.get('sector', '')
+    stocks = SECTOR_STOCKS.get(sector, [])
+    result = []
+    for sym in stocks:
+        try:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            price = getattr(fi, 'last_price', 0) or 0
+            prev  = getattr(fi, 'previous_close', price) or price
+            chg   = round((price - prev) / prev * 100, 2) if prev else 0
+            result.append({'symbol': sym.replace('.NS',''), 'full_sym': sym, 'price': round(price,2), 'change': chg})
+        except: pass
+    return jsonify(result)
+
+# ── Risk Profiler ─────────────────────────────────────────────────────────────
+@app.route('/api/risk_profile', methods=['POST'])
+@login_required
+def risk_profile():
+    profile = request.json.get('profile', 'moderate')
+    summary = get_portfolio_summary(session['user_id'])
+    if not summary:
+        return jsonify({'analysis': 'Add stocks to your portfolio first.', 'suggestions': []})
+    suggestions = []
+    rs = summary['risk_score']
+    tech = summary['tech_pct']
+    n = summary['num_stocks']
+    if profile == 'conservative':
+        analysis = f"Your portfolio risk score is {rs}/10 ({summary['risk_label']}). "
+        analysis += "⚠️ Higher than recommended for conservative." if rs > 4 else "✅ Aligns with conservative profile."
+        if tech > 30: suggestions.append("📉 Reduce IT/Tech below 30% — add Banking or FMCG stocks.")
+        if n < 5: suggestions.append("📊 Diversify — hold at least 5-8 stocks across sectors.")
+        suggestions.append("🛡️ Add defensive stocks: HINDUNILVR, NESTLEIND, ITC.")
+    elif profile == 'moderate':
+        analysis = f"Your portfolio risk score is {rs}/10 ({summary['risk_label']}). "
+        analysis += "✅ Well balanced." if 4 <= rs <= 7 else ("📈 Can take slightly more risk." if rs < 4 else "⚠️ Consider reducing concentration.")
+        if tech > 50: suggestions.append(f"⚖️ Tech at {tech}% — balance with other sectors.")
+        suggestions.append("📊 Mix growth (NVDA, TSLA) and value stocks (HDFC, TCS).")
+    elif profile == 'aggressive':
+        analysis = f"Your portfolio risk score is {rs}/10 ({summary['risk_label']}). "
+        analysis += "🚀 High risk, high reward — aligned." if rs >= 7 else "📈 Can increase exposure to high-growth stocks."
+        suggestions.append("🚀 Consider: NVDA, AMD, ADANIENT for momentum plays.")
+        suggestions.append("⚡ Use stop-losses at -8% to protect against drawdowns.")
+    else:
+        analysis = "Unknown profile."
+    return jsonify({'profile': profile, 'risk_score': rs, 'risk_label': summary['risk_label'],
+                    'analysis': analysis, 'suggestions': suggestions,
+                    'sector_alloc': summary['sector_alloc'], 'num_stocks': n})
+
+# ── Paper Trading ─────────────────────────────────────────────────────────────
+def init_paper_trading():
+    conn = get_db()
+    conn.execute('''CREATE TABLE IF NOT EXISTS paper_portfolio (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER, symbol TEXT, shares REAL, buy_price REAL, added TEXT
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS paper_cash (
+        user_id INTEGER PRIMARY KEY, cash REAL DEFAULT 100000
+    )''')
+    conn.commit()
+    conn.close()
+
+init_paper_trading()
+
+@app.route('/paper')
+@login_required
+def paper_trading_page():
+    return render_template('paper_trading.html')
+
+@app.route('/compare')
+@login_required
+def compare_page():
+    return render_template('compare.html')
+
+@app.route('/api/paper/status')
+@login_required
+def paper_status():
+    uid = session['user_id']
+    conn = get_db()
+    cash_row = conn.execute("SELECT cash FROM paper_cash WHERE user_id=?", (uid,)).fetchone()
+    if not cash_row:
+        conn.execute("INSERT INTO paper_cash (user_id, cash) VALUES (?,?)", (uid, 100000))
+        conn.commit()
+        cash = 100000
+    else:
+        cash = cash_row[0]
+    holdings = conn.execute("SELECT id, symbol, shares, buy_price FROM paper_portfolio WHERE user_id=?", (uid,)).fetchall()
+    conn.close()
+    total_val = 0
+    h_list = []
+    for hid, sym, shares, bp in holdings:
+        try:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            price = getattr(fi, 'last_price', bp) or bp
+            val = shares * price
+            pnl = val - shares * bp
+            total_val += val
+            h_list.append({'id': hid, 'symbol': sym, 'shares': shares, 'buy_price': bp,
+                           'current_price': round(price,2), 'value': round(val,2),
+                           'pnl': round(pnl,2), 'pnl_pct': round(pnl/(shares*bp)*100,2) if bp else 0})
+        except: pass
+    total_assets = cash + total_val
+    return_pct = round((total_assets - 100000) / 100000 * 100, 2)
+    return jsonify({'cash': round(cash,2), 'holdings': h_list,
+                    'total_value': round(total_val,2), 'total_assets': round(total_assets,2),
+                    'return_pct': return_pct})
+
+@app.route('/api/paper/buy', methods=['POST'])
+@login_required
+def paper_buy():
+    uid = session['user_id']
+    symbol = request.json.get('symbol','').upper()
+    shares = float(request.json.get('shares', 0))
+    if not symbol or shares <= 0:
+        return jsonify({'error': 'Invalid input'}), 400
+    try:
+        t = yf.Ticker(symbol)
+        fi = t.fast_info
+        price = getattr(fi, 'last_price', None)
+        if not price: return jsonify({'error': 'Price not found'}), 404
+        cost = price * shares
+        conn = get_db()
+        cash_row = conn.execute("SELECT cash FROM paper_cash WHERE user_id=?", (uid,)).fetchone()
+        if not cash_row:
+            conn.execute("INSERT INTO paper_cash (user_id, cash) VALUES (?,?)", (uid, 100000))
+            cash = 100000
+        else:
+            cash = cash_row[0]
+        if cost > cash:
+            conn.close()
+            return jsonify({'error': f'Insufficient funds. Need ${cost:.2f}, have ${cash:.2f}'}), 400
+        conn.execute("UPDATE paper_cash SET cash=? WHERE user_id=?", (cash - cost, uid))
+        conn.execute("INSERT INTO paper_portfolio (user_id, symbol, shares, buy_price, added) VALUES (?,?,?,?,?)",
+                     (uid, symbol, shares, round(price,2), datetime.now().strftime('%Y-%m-%d %H:%M')))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': f'✅ Bought {shares} {symbol} @ ${price:.2f}', 'cost': round(cost,2)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/paper/sell', methods=['POST'])
+@login_required
+def paper_sell():
+    uid = session['user_id']
+    hid = request.json.get('id')
+    conn = get_db()
+    row = conn.execute("SELECT symbol, shares, buy_price FROM paper_portfolio WHERE id=? AND user_id=?", (hid, uid)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Not found'}), 404
+    sym, shares, bp = row
+    try:
+        t = yf.Ticker(sym)
+        fi = t.fast_info
+        price = getattr(fi, 'last_price', bp) or bp
+        proceeds = price * shares
+        pnl = proceeds - shares * bp
+        conn.execute("DELETE FROM paper_portfolio WHERE id=?", (hid,))
+        conn.execute("UPDATE paper_cash SET cash = cash + ? WHERE user_id=?", (proceeds, uid))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': f'✅ Sold {shares} {sym} @ ${price:.2f}', 'pnl': round(pnl,2)})
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/paper/reset', methods=['POST'])
+@login_required
+def paper_reset():
+    uid = session['user_id']
+    conn = get_db()
+    conn.execute("DELETE FROM paper_portfolio WHERE user_id=?", (uid,))
+    conn.execute("INSERT OR REPLACE INTO paper_cash (user_id, cash) VALUES (?,?)", (uid, 100000))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': '✅ Reset to $100,000'})
+
+@app.route('/api/paper/leaderboard')
+@login_required
+def paper_leaderboard():
+    conn = get_db()
+    users = conn.execute("SELECT id, name FROM users").fetchall()
+    board = []
+    for uid, uname in users:
+        cash_row = conn.execute("SELECT cash FROM paper_cash WHERE user_id=?", (uid,)).fetchone()
+        if not cash_row: continue
+        cash = cash_row[0]
+        holdings = conn.execute("SELECT symbol, shares, buy_price FROM paper_portfolio WHERE user_id=?", (uid,)).fetchall()
+        total_val = cash
+        for sym, shares, bp in holdings:
+            try:
+                t = yf.Ticker(sym)
+                fi = t.fast_info
+                price = getattr(fi, 'last_price', bp) or bp
+                total_val += shares * price
+            except: total_val += shares * bp
+        ret = round((total_val - 100000) / 100000 * 100, 2)
+        board.append({'name': uname, 'total': round(total_val,2), 'return_pct': ret})
+    conn.close()
+    board.sort(key=lambda x: x['return_pct'], reverse=True)
+    for i, b in enumerate(board): b['rank'] = i + 1
+    return jsonify(board)
+
 if __name__ == '__main__':
     app.run(debug=True)

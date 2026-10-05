@@ -6,6 +6,29 @@
     <title>Stock Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .mw-tab{padding:5px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;color:#666;font-size:0.78rem;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
+        .mw-tab.active,.mw-tab:hover{background:rgba(108,99,255,0.15);border-color:rgba(108,99,255,0.3);color:#fff;}
+        .mw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
+        .mw-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all 0.2s;}
+        .mw-card:hover{background:rgba(108,99,255,0.1);border-color:rgba(108,99,255,0.3);transform:translateY(-2px);}
+        .mw-sym{font-size:0.85rem;font-weight:700;color:#6c63ff;margin-bottom:2px;}
+        .mw-name{font-size:0.72rem;color:#444;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .mw-price{font-size:1rem;font-weight:700;color:#fff;}
+        .mw-chg{font-size:0.75rem;font-weight:600;margin-top:2px;}
+        .mw-chg.up{color:#00e676;}.mw-chg.down{color:#ff5252;}
+        .mw-loading{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#444;}
+        .ind-toggle{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+        .ind-btn{padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;font-size:0.75rem;cursor:pointer;color:#666;font-family:'Inter',sans-serif;transition:all 0.2s;}
+        .ind-btn.active{background:rgba(108,99,255,0.2);border-color:#6c63ff;color:#fff;}
+        .ind-stat{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;}
+        .ind-label{color:#555;}.ind-val{font-weight:600;}
+        .ind-signal{padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:700;}
+        .ind-signal.buy{background:rgba(0,230,118,0.15);color:#00e676;}
+        .ind-signal.sell{background:rgba(255,82,82,0.15);color:#ff5252;}
+        .ind-signal.neutral{background:rgba(255,152,0,0.15);color:#ff9800;}
+        canvas.ind-chart{width:100%!important;height:120px!important;margin-top:8px;border-radius:8px;}
+    </style>
 </head>
 <body>
 <div class="bg-orbs">
@@ -26,6 +49,8 @@
             <a href="/dashboard" class="nav-link">🏠 Dashboard</a>
             <a href="/tracker" class="nav-link active">📈 Tracker</a>
             <a href="/portfolio" class="nav-link">💼 Portfolio</a>
+            <a href="/compare" class="nav-link">⚖️ Compare</a>
+            <a href="/paper" class="nav-link">🏆 Paper Trade</a>
             <a href="/logout" class="nav-link danger">Logout</a>
             <div class="live-pill"><span class="pulse-dot"></span> LIVE</div>
             <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">⏸ Loading</div>
@@ -42,18 +67,62 @@
                 <span id="searchSpinner" class="btn-spinner hidden"></span>
             </button>
         </div>
+        <!-- US Chips -->
+        <div style="margin-bottom:6px;font-size:0.72rem;color:#444;font-weight:600;">🇺🇸 US STOCKS</div>
+        <div class="chips" style="margin-bottom:10px;">
+            <span class="chip" onclick="quickSearch('AAPL')">🍎 AAPL</span>
+            <span class="chip" onclick="quickSearch('MSFT')">💻 MSFT</span>
+            <span class="chip" onclick="quickSearch('GOOGL')">🔍 GOOGL</span>
+            <span class="chip" onclick="quickSearch('AMZN')">📦 AMZN</span>
+            <span class="chip" onclick="quickSearch('NVDA')">🎮 NVDA</span>
+            <span class="chip" onclick="quickSearch('TSLA')">🚗 TSLA</span>
+            <span class="chip" onclick="quickSearch('META')">📘 META</span>
+            <span class="chip" onclick="quickSearch('NFLX')">🎬 NFLX</span>
+            <span class="chip" onclick="quickSearch('AMD')">⚡ AMD</span>
+            <span class="chip" onclick="quickSearch('INTC')">🔵 INTC</span>
+            <span class="chip" onclick="quickSearch('BABA')">🛒 BABA</span>
+            <span class="chip" onclick="quickSearch('JPM')">🏦 JPM</span>
+            <span class="chip" onclick="quickSearch('V')">💳 VISA</span>
+            <span class="chip" onclick="quickSearch('DIS')">🏰 DIS</span>
+            <span class="chip" onclick="quickSearch('UBER')">🚕 UBER</span>
+            <span class="chip" onclick="quickSearch('SPOT')">🎵 SPOT</span>
+        </div>
+        <!-- Indian Chips -->
+        <div style="margin-bottom:6px;font-size:0.72rem;color:#444;font-weight:600;">🇮🇳 INDIAN STOCKS</div>
         <div class="chips">
-            <span class="chip" onclick="quickSearch('AAPL')">AAPL</span>
-            <span class="chip" onclick="quickSearch('TSLA')">TSLA</span>
-            <span class="chip" onclick="quickSearch('GOOGL')">GOOGL</span>
-            <span class="chip" onclick="quickSearch('NVDA')">NVDA</span>
-            <span class="chip" onclick="quickSearch('TCS.NS')">TCS</span>
-            <span class="chip" onclick="quickSearch('RELIANCE.NS')">RELIANCE</span>
-            <span class="chip" onclick="quickSearch('INFY.NS')">INFOSYS</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('RELIANCE.NS')">🛢 RELIANCE</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('TCS.NS')">💼 TCS</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('INFY.NS')">🖥 INFOSYS</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('WIPRO.NS')">🔧 WIPRO</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('HDFCBANK.NS')">🏦 HDFC</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('ICICIBANK.NS')">🏦 ICICI</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('SBIN.NS')">🏦 SBI</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('BAJFINANCE.NS')">💰 BAJAJ FIN</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('TATAMOTORS.NS')">🚗 TATA MOTORS</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('ADANIENT.NS')">⚡ ADANI</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('HINDUNILVR.NS')">🧴 HUL</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('MARUTI.NS')">🚙 MARUTI</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('SUNPHARMA.NS')">💊 SUN PHARMA</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('ONGC.NS')">🛢 ONGC</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('LTIM.NS')">🖥 LTIMindtree</span>
+            <span class="chip" style="border-color:rgba(255,153,0,0.3);color:#ffaa44;" onclick="quickSearch('KOTAKBANK.NS')">🏦 KOTAK</span>
         </div>
     </div>
 
     <div id="errorMsg" class="toast-error hidden"></div>
+
+    <!-- Market Watch List -->
+    <div class="glass-card" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:0.9rem;font-weight:600;color:#aaa;">🌍 Market Watch <span style="font-size:0.72rem;color:#444;font-weight:400;margin-left:6px;">Click any stock to track</span></div>
+            <div style="display:flex;gap:8px;">
+                <button class="mw-tab active" onclick="switchTab('us')" id="tabUS">🇺🇸 US</button>
+                <button class="mw-tab" onclick="switchTab('in')" id="tabIN">🇮🇳 India</button>
+                <button class="mw-tab" onclick="switchTab('all')" id="tabAll">All</button>
+            </div>
+        </div>
+        <div id="marketWatchList"><div style="color:#444;font-size:0.85rem;text-align:center;padding:20px;">Loading market data...</div></div>
+    </div>
 
     <!-- Main Grid -->
     <div class="main-grid">
@@ -116,6 +185,22 @@
                 </div>
 
                 <button class="wl-btn" onclick="addToWatchlist()">⭐ Add to Watchlist</button>
+
+                <!-- Technical Indicators -->
+                <div style="margin-top:14px;">
+                    <div style="font-size:0.82rem;font-weight:600;color:#666;margin-bottom:10px;">📊 Technical Indicators</div>
+                    <div class="ind-toggle">
+                        <button class="ind-btn active" data-ind="RSI" onclick="toggleInd(this)">RSI</button>
+                        <button class="ind-btn active" data-ind="MACD" onclick="toggleInd(this)">MACD</button>
+                        <button class="ind-btn active" data-ind="MA" onclick="toggleInd(this)">MA</button>
+                        <button class="ind-btn active" data-ind="EMA" onclick="toggleInd(this)">EMA</button>
+                        <button class="ind-btn active" data-ind="BB" onclick="toggleInd(this)">Bollinger</button>
+                        <button class="ind-btn active" data-ind="SR" onclick="toggleInd(this)">Support/Res</button>
+                        <button class="ind-btn active" data-ind="VOL" onclick="toggleInd(this)">Volume</button>
+                        <button class="ind-btn" style="background:rgba(108,99,255,0.15);border-color:#6c63ff;color:#6c63ff;" onclick="loadIndicators()">🔄 Load</button>
+                    </div>
+                    <div id="indResults"></div>
+                </div>
 
                 <div style="margin-top:10px;padding:10px 14px;background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.15);border-radius:10px;font-size:0.78rem;color:#666;">
                     💡 <strong style="color:#6c63ff;">Smart Alert:</strong> Use volume condition for HIGH PRIORITY alerts on unusual activity!
@@ -311,30 +396,31 @@
     }
 
     async function loadAlerts() {
-        const res = await fetch('/api/get_alerts');
-        const alerts = await res.json();
-        const div = document.getElementById('alertsList');
-        const active = alerts.filter(a => a.status === 'Active');
-
-        const badge = document.getElementById('alertCount');
-        if (active.length > 0) { badge.textContent = active.length; badge.classList.remove('hidden'); }
-        else { badge.classList.add('hidden'); }
-
-        if (active.length === 0) { div.innerHTML = '<div class="empty-list">No active alerts</div>'; return; }
-
-        const icons = { above: '📈', below: '📉', pct_up: '🚀', pct_down: '💥' };
-        const labels = { above: 'Above', below: 'Below', pct_up: 'Up %', pct_down: 'Down %' };
-        div.innerHTML = active.map(a => `
-            <div class="list-item">
-                <div class="item-left">
-                    <span class="item-icon">${icons[a.condition]}</span>
-                    <div>
-                        <span class="item-title">${a.symbol}</span>
-                        <span class="item-sub">${labels[a.condition]} $${a.target}</span>
+        try {
+            const res = await fetch('/api/get_alerts');
+            const alerts = await res.json();
+            const div = document.getElementById('alertsList');
+            const active = alerts.filter(a => a.status === 'Active');
+            const badge = document.getElementById('alertCount');
+            if (active.length > 0) { badge.textContent = active.length; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+            if (active.length === 0) { div.innerHTML = '<div class="empty-list">No active alerts</div>'; return; }
+            const icons = { above: '📈', below: '📉', pct_up: '🚀', pct_down: '💥' };
+            const labels = { above: 'Above', below: 'Below', pct_up: 'Up %', pct_down: 'Down %' };
+            div.innerHTML = active.map(a => `
+                <div class="list-item">
+                    <div class="item-left">
+                        <span class="item-icon">${icons[a.condition] || '🔔'}</span>
+                        <div>
+                            <span class="item-title">${a.symbol}</span>
+                            <span class="item-sub">${labels[a.condition] || a.condition} $${a.target}</span>
+                        </div>
                     </div>
-                </div>
-                <button class="icon-del" onclick="deleteAlert(${a.id})">🗑</button>
-            </div>`).join('');
+                    <button class="icon-del" onclick="deleteAlert(${a.id})">🗑</button>
+                </div>`).join('');
+        } catch(e) {
+            document.getElementById('alertsList').innerHTML = '<div class="empty-list">Error loading alerts</div>';
+        }
     }
 
     async function deleteAlert(id) {
@@ -369,30 +455,24 @@
     async function loadWatchlist() {
         const div = document.getElementById('watchlistItems');
         div.innerHTML = '<div class="empty-list" style="color:#555">Loading...</div>';
-        const symRes = await fetch('/api/watchlist/get');
-        const symbols = await symRes.json();
-        if (symbols.length === 0) { div.innerHTML = '<div class="empty-list">No stocks added yet</div>'; return; }
-        div.innerHTML = symbols.map(s => `
-            <div class="list-item" id="wl-${s}">
-                <div class="item-left">
-                    <span class="wl-tag" onclick="quickSearch('${s}')">${s}</span>
-                    <span style="font-size:0.78rem;color:#555;">loading...</span>
-                </div>
-                <button class="icon-del" onclick="removeWatchlist('${s}')">&#128465;</button>
-            </div>`).join('');
         try {
             const priceRes = await fetch('/api/watchlist_prices');
             const prices = await priceRes.json();
-            prices.forEach(w => {
-                const row = document.getElementById('wl-' + w.symbol);
-                if (!row) return;
+            if (!prices.length) { div.innerHTML = '<div class="empty-list">No stocks added yet</div>'; return; }
+            div.innerHTML = prices.map(w => {
                 const isUp = w.change_pct >= 0;
-                row.querySelector('.item-left').innerHTML =
-                    '<span class="wl-tag" onclick="quickSearch(\'' + w.symbol + '\')">' + w.symbol + '</span>' +
-                    '<span style="font-size:0.82rem;color:#aaa;">$' + w.price + '</span>' +
-                    '<span style="font-size:0.78rem;font-weight:600;color:' + (isUp ? '#00e676' : '#ff5252') + ';">' + (isUp ? '▲' : '▼') + ' ' + Math.abs(w.change_pct) + '%</span>';
-            });
-        } catch(e) {}
+                return `<div class="list-item" id="wl-${w.symbol}">
+                    <div class="item-left" style="gap:8px;flex:1;">
+                        <span class="wl-tag" onclick="quickSearch('${w.symbol}')">${w.symbol}</span>
+                        <span style="font-size:0.82rem;color:#aaa;">$${w.price}</span>
+                        <span style="font-size:0.78rem;font-weight:600;color:${isUp?'#00e676':'#ff5252'};">${isUp?'▲':'▼'} ${Math.abs(w.change_pct)}%</span>
+                    </div>
+                    <button class="icon-del" onclick="removeWatchlist('${w.symbol}')">🗑</button>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            div.innerHTML = '<div class="empty-list">Error loading watchlist</div>';
+        }
     }
 
     async function removeWatchlist(symbol) {
@@ -423,10 +503,149 @@
     });
 
     setInterval(() => { if (currentSymbol) getStock(); }, 30000);
+    setInterval(loadAlerts, 30000);
+    setInterval(loadWatchlist, 30000);
+    setInterval(loadHistory, 60000);
 
     loadAlerts();
     loadWatchlist();
     loadHistory();
+    loadMarketWatch();
+
+    // ── Technical Indicators ─────────────────────────────────────────────────────
+    function toggleInd(btn) {
+        btn.classList.toggle('active');
+    }
+
+    async function loadIndicators() {
+        if (!currentSymbol) return;
+        const active = [...document.querySelectorAll('.ind-btn.active[data-ind]')].map(b => b.dataset.ind);
+        if (!active.length) { document.getElementById('indResults').innerHTML = ''; return; }
+        document.getElementById('indResults').innerHTML = '<div style="color:#444;font-size:0.82rem;padding:10px 0;">Loading indicators...</div>';
+        const res = await fetch('/api/indicators', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbol: currentSymbol, indicators: active})
+        });
+        const d = await res.json();
+        if (d.error) { document.getElementById('indResults').innerHTML = `<div style="color:#ff5252;font-size:0.82rem;">${d.error}</div>`; return; }
+
+        let html = '';
+
+        if (d.rsi_current !== null && d.rsi_current !== undefined) {
+            const rsi = d.rsi_current;
+            const sig = rsi < 30 ? 'buy' : rsi > 70 ? 'sell' : 'neutral';
+            const sigLabel = rsi < 30 ? 'Oversold → BUY' : rsi > 70 ? 'Overbought → SELL' : 'Neutral';
+            html += `<div class="ind-stat"><span class="ind-label">RSI (14)</span><span class="ind-val">${rsi} <span class="ind-signal ${sig}">${sigLabel}</span></span></div>`;
+        }
+        if (d.macd_current !== undefined) {
+            const macd = d.macd_current;
+            const sig_val = d.macd_signal_current;
+            const sig = macd > sig_val ? 'buy' : 'sell';
+            html += `<div class="ind-stat"><span class="ind-label">MACD</span><span class="ind-val">${macd} <span class="ind-signal ${sig}">${macd > sig_val ? 'Bullish' : 'Bearish'}</span></span></div>`;
+            html += `<div class="ind-stat"><span class="ind-label">Signal Line</span><span class="ind-val">${sig_val}</span></div>`;
+        }
+        if (d.ma20) {
+            const ma20 = d.ma20.filter(v => v !== null).slice(-1)[0];
+            const ma50 = d.ma50 ? d.ma50.filter(v => v !== null).slice(-1)[0] : null;
+            const price = d.closes.slice(-1)[0];
+            html += `<div class="ind-stat"><span class="ind-label">MA 20</span><span class="ind-val">$${ma20} <span class="ind-signal ${price > ma20 ? 'buy' : 'sell'}">${price > ma20 ? 'Above' : 'Below'}</span></span></div>`;
+            if (ma50) html += `<div class="ind-stat"><span class="ind-label">MA 50</span><span class="ind-val">$${ma50} <span class="ind-signal ${price > ma50 ? 'buy' : 'sell'}">${price > ma50 ? 'Above' : 'Below'}</span></span></div>`;
+        }
+        if (d.ema9) {
+            const ema9  = d.ema9.slice(-1)[0];
+            const ema21 = d.ema21.slice(-1)[0];
+            const price = d.closes.slice(-1)[0];
+            html += `<div class="ind-stat"><span class="ind-label">EMA 9</span><span class="ind-val">$${ema9}</span></div>`;
+            html += `<div class="ind-stat"><span class="ind-label">EMA 21</span><span class="ind-val">$${ema21} <span class="ind-signal ${ema9 > ema21 ? 'buy' : 'sell'}">${ema9 > ema21 ? 'Golden Cross' : 'Death Cross'}</span></span></div>`;
+        }
+        if (d.bb_upper) {
+            const upper = d.bb_upper.filter(v => v !== null).slice(-1)[0];
+            const lower = d.bb_lower.filter(v => v !== null).slice(-1)[0];
+            const mid   = d.bb_mid.filter(v => v !== null).slice(-1)[0];
+            const price = d.closes.slice(-1)[0];
+            const pos = price > upper ? 'sell' : price < lower ? 'buy' : 'neutral';
+            const posLabel = price > upper ? 'Above Upper Band' : price < lower ? 'Below Lower Band' : 'Inside Bands';
+            html += `<div class="ind-stat"><span class="ind-label">Bollinger Upper</span><span class="ind-val">$${upper}</span></div>`;
+            html += `<div class="ind-stat"><span class="ind-label">Bollinger Lower</span><span class="ind-val">$${lower} <span class="ind-signal ${pos}">${posLabel}</span></span></div>`;
+        }
+        if (d.support !== undefined) {
+            const price = d.closes.slice(-1)[0];
+            html += `<div class="ind-stat"><span class="ind-label">Support (20d)</span><span class="ind-val" style="color:#00e676;">$${d.support}</span></div>`;
+            html += `<div class="ind-stat"><span class="ind-label">Resistance (20d)</span><span class="ind-val" style="color:#ff5252;">$${d.resistance}</span></div>`;
+        }
+        if (d.volumes) {
+            const lastVol = d.volumes.slice(-1)[0];
+            const avgVol  = d.avg_vol.filter(v => v !== null).slice(-1)[0];
+            const ratio   = avgVol ? (lastVol / avgVol).toFixed(2) : 1;
+            const sig = ratio >= 2 ? 'sell' : ratio >= 1.5 ? 'neutral' : 'buy';
+            html += `<div class="ind-stat"><span class="ind-label">Volume</span><span class="ind-val">${Number(lastVol).toLocaleString()} <span class="ind-signal ${sig}">${ratio}x avg</span></span></div>`;
+        }
+
+        document.getElementById('indResults').innerHTML = html || '<div style="color:#444;font-size:0.82rem;">Select indicators above</div>';
+    }
+
+    const ALL_STOCKS = [
+        {s:'AAPL',n:'Apple',cat:'us'},{s:'MSFT',n:'Microsoft',cat:'us'},{s:'GOOGL',n:'Alphabet',cat:'us'},
+        {s:'AMZN',n:'Amazon',cat:'us'},{s:'NVDA',n:'NVIDIA',cat:'us'},{s:'TSLA',n:'Tesla',cat:'us'},
+        {s:'META',n:'Meta',cat:'us'},{s:'NFLX',n:'Netflix',cat:'us'},{s:'AMD',n:'AMD',cat:'us'},
+        {s:'INTC',n:'Intel',cat:'us'},{s:'BABA',n:'Alibaba',cat:'us'},{s:'JPM',n:'JPMorgan',cat:'us'},
+        {s:'V',n:'Visa',cat:'us'},{s:'DIS',n:'Disney',cat:'us'},{s:'UBER',n:'Uber',cat:'us'},
+        {s:'SPOT',n:'Spotify',cat:'us'},
+        {s:'RELIANCE.NS',n:'Reliance',cat:'in'},{s:'TCS.NS',n:'TCS',cat:'in'},
+        {s:'INFY.NS',n:'Infosys',cat:'in'},{s:'WIPRO.NS',n:'Wipro',cat:'in'},
+        {s:'HDFCBANK.NS',n:'HDFC Bank',cat:'in'},{s:'ICICIBANK.NS',n:'ICICI Bank',cat:'in'},
+        {s:'SBIN.NS',n:'SBI',cat:'in'},{s:'BAJFINANCE.NS',n:'Bajaj Finance',cat:'in'},
+        {s:'TATAMOTORS.NS',n:'Tata Motors',cat:'in'},{s:'ADANIENT.NS',n:'Adani Ent',cat:'in'},
+        {s:'HINDUNILVR.NS',n:'HUL',cat:'in'},{s:'MARUTI.NS',n:'Maruti',cat:'in'},
+        {s:'SUNPHARMA.NS',n:'Sun Pharma',cat:'in'},{s:'ONGC.NS',n:'ONGC',cat:'in'},
+        {s:'LTIM.NS',n:'LTIMindtree',cat:'in'},{s:'KOTAKBANK.NS',n:'Kotak Bank',cat:'in'},
+    ];
+    let mwData = {};
+    let activeTab = 'us';
+
+    function switchTab(tab) {
+        activeTab = tab;
+        ['us','in','all'].forEach(t => document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===tab));
+        renderMarketWatch();
+    }
+
+    function renderMarketWatch() {
+        const stocks = ALL_STOCKS.filter(s => activeTab === 'all' || s.cat === activeTab);
+        document.getElementById('marketWatchList').innerHTML = '<div class="mw-grid">' +
+            stocks.map(s => {
+                const d = mwData[s.s];
+                const price = d ? '$'+d.price : '<span class="mw-loading"><span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;"></span></span>';
+                const chg = d ? `<div class="mw-chg ${d.change>=0?'up':'down'}">${d.change>=0?'▲':'▼'} ${Math.abs(d.change)}%</div>` : '';
+                return `<div class="mw-card" onclick="quickSearch('${s.s}')">
+                    <div class="mw-sym">${s.s.replace('.NS','').replace('.BO','')}</div>
+                    <div class="mw-name">${s.n}</div>
+                    <div class="mw-price">${price}</div>
+                    ${chg}
+                </div>`;
+            }).join('') + '</div>';
+    }
+
+    async function loadMarketWatch() {
+        renderMarketWatch();
+        try {
+            const res = await fetch('/api/market_stocks');
+            const list = await res.json();
+            list.forEach(s => { mwData[s.symbol] = {price: s.price, change: s.change}; });
+            // Fetch extra stocks not in market_stocks API
+            const extra = ALL_STOCKS.filter(s => !list.find(l => l.symbol === s.s));
+            renderMarketWatch();
+            // Fetch extra in background
+            for (const s of extra) {
+                try {
+                    const r = await fetch('/api/stock_price', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:s.s})});
+                    const d = await r.json();
+                    if (!d.error) { mwData[s.s] = {price: d.price, change: d.change_pct}; renderMarketWatch(); }
+                } catch(e) {}
+            }
+        } catch(e) {}
+    }
+
+    setInterval(loadMarketWatch, 60000);
 
     async function loadMarketStatus() {
         const r = await fetch('/api/market_status');

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Stocks — StockAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+        @media(max-width:700px){.cmp-grid{grid-template-columns:1fr}}
+        .cmp-header{text-align:center;padding:16px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:12px}
+        .cmp-sym{font-size:1.4rem;font-weight:800;color:#6c63ff}
+        .cmp-name{font-size:0.8rem;color:#555;margin-top:2px}
+        .cmp-price{font-size:1.8rem;font-weight:800;margin-top:8px}
+        .cmp-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.85rem}
+        .cmp-label{color:#555;font-size:0.8rem}
+        .cmp-val{font-weight:600;color:#ddd}
+        .winner{color:#00e676 !important}
+        .verdict-item{padding:12px 16px;background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);border-radius:10px;margin-bottom:8px;font-size:0.88rem;color:#ccc}
+        .search-pair{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:20px}
+        @media(max-width:600px){.search-pair{grid-template-columns:1fr}}
+        .inp{width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:0.9rem;font-family:'Inter',sans-serif;box-sizing:border-box}
+        .inp:focus{outline:none;border-color:#6c63ff}
+        .cmp-btn{padding:11px 24px;background:linear-gradient(135deg,#6c63ff,#00d4ff);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap}
+        .tag-up{color:#00e676}.tag-down{color:#ff5252}
+        .analyst-badge{padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700}
+        .analyst-badge.buy{background:rgba(0,230,118,0.15);color:#00e676}
+        .analyst-badge.hold{background:rgba(255,152,0,0.15);color:#ff9800}
+        .analyst-badge.sell{background:rgba(255,82,82,0.15);color:#ff5252}
+    </style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+<div class="container">
+    <nav class="navbar">
+        <a href="/dashboard" class="nav-brand">
+            <span class="nav-brand-icon">📈</span>
+            <span class="nav-brand-name">StockTracker</span>
+        </a>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🏠 Dashboard</a>
+            <a href="/tracker" class="nav-link">📈 Tracker</a>
+            <a href="/portfolio" class="nav-link">💼 Portfolio</a>
+            <a href="/compare" class="nav-link active">⚖️ Compare</a>
+            <a href="/paper" class="nav-link">🏆 Paper Trade</a>
+            <a href="/logout" class="nav-link danger">Logout</a>
+            <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">⏸ Loading</div>
+        </div>
+    </nav>
+
+    <div style="font-size:1.5rem;font-weight:700;margin-bottom:20px;">⚖️ Stock Comparison</div>
+
+    <div class="glass-card">
+        <div class="search-pair">
+            <div>
+                <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:5px;">Stock 1</label>
+                <input class="inp" id="sym1" placeholder="e.g. TCS.NS" value="TCS.NS"/>
+            </div>
+            <div>
+                <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:5px;">Stock 2</label>
+                <input class="inp" id="sym2" placeholder="e.g. INFY.NS" value="INFY.NS"/>
+            </div>
+            <button class="cmp-btn" onclick="compare()">Compare ⚖️</button>
+        </div>
+        <!-- Quick pairs -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span style="font-size:0.72rem;color:#444;align-self:center;">Quick:</span>
+            <span class="chip" onclick="quickPair('TCS.NS','INFY.NS')">TCS vs INFY</span>
+            <span class="chip" onclick="quickPair('AAPL','MSFT')">AAPL vs MSFT</span>
+            <span class="chip" onclick="quickPair('HDFCBANK.NS','ICICIBANK.NS')">HDFC vs ICICI</span>
+            <span class="chip" onclick="quickPair('TSLA','NVDA')">TSLA vs NVDA</span>
+            <span class="chip" onclick="quickPair('RELIANCE.NS','ONGC.NS')">RELIANCE vs ONGC</span>
+        </div>
+    </div>
+
+    <div id="cmpResult" style="display:none;">
+        <div class="cmp-grid">
+            <div class="glass-card" id="card1"></div>
+            <div class="glass-card" id="card2"></div>
+        </div>
+        <div class="glass-card" style="margin-top:16px;">
+            <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">🤖 AI Verdict</div>
+            <div id="verdictList"></div>
+        </div>
+    </div>
+    <div id="cmpLoader" style="text-align:center;padding:40px;color:#444;display:none;">
+        <div class="spin-ring" style="margin:0 auto 12px;"></div>Comparing stocks...
+    </div>
+</div>
+
+<script>
+function quickPair(s1, s2) {
+    document.getElementById('sym1').value = s1;
+    document.getElementById('sym2').value = s2;
+    compare();
+}
+
+function fmt(n) {
+    if (!n) return '—';
+    if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
+    if (n >= 1e9)  return '$' + (n/1e9).toFixed(2) + 'B';
+    if (n >= 1e6)  return '$' + (n/1e6).toFixed(2) + 'M';
+    return '$' + n.toLocaleString();
+}
+
+function buildCard(s, other, metrics) {
+    const chgClass = s.change_pct >= 0 ? 'tag-up' : 'tag-down';
+    const ratingClass = s.analyst_rating === 'BUY' || s.analyst_rating === 'STRONG_BUY' ? 'buy' : s.analyst_rating === 'SELL' ? 'sell' : 'hold';
+    const rows = [
+        ['P/E Ratio',    s.pe_ratio || '—',  other.pe_ratio,  true],
+        ['P/B Ratio',    s.pb_ratio || '—',  other.pb_ratio,  true],
+        ['ROE',          s.roe ? s.roe+'%' : '—', other.roe,  false],
+        ['Revenue',      fmt(s.revenue),     null,            false],
+        ['Net Income',   fmt(s.net_income),  null,            false],
+        ['Market Cap',   fmt(s.market_cap),  null,            false],
+        ['Div Yield',    s.div_yield ? s.div_yield+'%' : '—', other.div_yield, false],
+        ['Beta',         s.beta || '—',      other.beta,      true],
+        ['1Y Return',    s.yr_return+'%',    other.yr_return, false],
+        ['52W High',     '$'+s['52w_high'],  null,            false],
+        ['52W Low',      '$'+s['52w_low'],   null,            false],
+        ['Sector',       s.sector,           null,            false],
+    ];
+    return `
+        <div class="cmp-header">
+            <div class="cmp-sym">${s.symbol}</div>
+            <div class="cmp-name">${s.name}</div>
+            <div class="cmp-price">$${s.price}</div>
+            <span class="${chgClass}" style="font-size:0.85rem;font-weight:600;">${s.change_pct >= 0 ? '▲' : '▼'} ${Math.abs(s.change_pct)}%</span>
+            &nbsp;<span class="analyst-badge ${ratingClass}">${s.analyst_rating}</span>
+        </div>
+        ${rows.map(([label, val, otherVal, lowerBetter]) => {
+            const numVal = parseFloat(val);
+            const numOther = parseFloat(otherVal);
+            let isWinner = false;
+            if (!isNaN(numVal) && !isNaN(numOther) && numOther !== 0) {
+                isWinner = lowerBetter ? numVal < numOther : numVal > numOther;
+            }
+            return `<div class="cmp-row"><span class="cmp-label">${label}</span><span class="cmp-val ${isWinner ? 'winner' : ''}">${val}${isWinner ? ' ✓' : ''}</span></div>`;
+        }).join('')}`;
+}
+
+async function compare() {
+    const s1 = document.getElementById('sym1').value.trim().toUpperCase();
+    const s2 = document.getElementById('sym2').value.trim().toUpperCase();
+    if (!s1 || !s2) return;
+    document.getElementById('cmpResult').style.display = 'none';
+    document.getElementById('cmpLoader').style.display = 'block';
+    const res = await fetch('/api/compare', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({symbols: [s1, s2]})
+    });
+    const data = await res.json();
+    document.getElementById('cmpLoader').style.display = 'none';
+    if (data.error) { alert(data.error); return; }
+    const [a, b] = data.stocks;
+    if (a.error || b.error) { alert('Could not fetch one of the stocks'); return; }
+    document.getElementById('card1').innerHTML = buildCard(a, b, data);
+    document.getElementById('card2').innerHTML = buildCard(b, a, data);
+    document.getElementById('verdictList').innerHTML = data.verdict.length
+        ? data.verdict.map(v => `<div class="verdict-item">${v}</div>`).join('')
+        : '<div style="color:#444;font-size:0.85rem;">No clear winner — both stocks are comparable.</div>';
+    document.getElementById('cmpResult').style.display = 'block';
+}
+
+async function loadMarketStatus() {
+    const r = await fetch('/api/market_status');
+    const d = await r.json();
+    const el = document.getElementById('mktStatus');
+    el.innerHTML = `<span style="width:7px;height:7px;background:${d.color};border-radius:50%;display:inline-block;${d.open?'animation:pulse 1.5s infinite':''}"></span> ${d.label}`;
+    el.style.color = d.color;
+    el.style.borderColor = d.color + '55';
+}
+loadMarketStatus();
+compare();
+</script>
+</body>
+</html>

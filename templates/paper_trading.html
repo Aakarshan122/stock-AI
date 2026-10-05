@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper Trading — StockAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .pt-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start}
+        @media(max-width:800px){.pt-grid{grid-template-columns:1fr}}
+        .stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+        @media(max-width:700px){.stat-strip{grid-template-columns:1fr 1fr}}
+        .stat-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px}
+        .stat-card span{display:block;font-size:0.72rem;color:#555;margin-bottom:4px}
+        .stat-card strong{font-size:1.2rem;font-weight:700}
+        .buy-form{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+        @media(max-width:600px){.buy-form{grid-template-columns:1fr}}
+        .inp{width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:0.9rem;font-family:'Inter',sans-serif;box-sizing:border-box}
+        .inp:focus{outline:none;border-color:#6c63ff}
+        .buy-btn{padding:10px 20px;background:linear-gradient(135deg,#00e676,#00b248);color:#000;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap}
+        .htable{width:100%;border-collapse:collapse}
+        .htable th{text-align:left;padding:8px 10px;font-size:0.72rem;color:#444;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.06)}
+        .htable td{padding:9px 10px;font-size:0.83rem;border-bottom:1px solid rgba(255,255,255,0.03)}
+        .green{color:#00e676}.red{color:#ff5252}
+        .sell-btn{background:transparent;border:1px solid rgba(255,82,82,0.3);color:#ff5252;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-family:'Inter',sans-serif}
+        .sell-btn:hover{background:rgba(255,82,82,0.1)}
+        .lb-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px}
+        .lb-rank{font-size:1.2rem;width:32px;text-align:center}
+        .lb-name{font-weight:600;font-size:0.88rem;flex:1}
+        .lb-ret{font-weight:700;font-size:0.9rem}
+        .lb-total{font-size:0.75rem;color:#555}
+        .msg-bar{padding:10px 14px;border-radius:8px;margin-top:10px;font-size:0.85rem}
+        .msg-bar.success{background:rgba(0,230,118,0.1);color:#00e676;border:1px solid rgba(0,230,118,0.3)}
+        .msg-bar.error{background:rgba(255,82,82,0.1);color:#ff5252;border:1px solid rgba(255,82,82,0.3)}
+        .hidden{display:none}
+        .reset-btn{padding:8px 16px;background:transparent;border:1px solid rgba(255,82,82,0.3);color:#ff5252;border-radius:8px;cursor:pointer;font-size:0.8rem;font-family:'Inter',sans-serif}
+        .reset-btn:hover{background:rgba(255,82,82,0.1)}
+        .price-preview{font-size:0.78rem;color:#6c63ff;margin-top:4px;min-height:16px}
+    </style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+<div class="container">
+    <nav class="navbar">
+        <a href="/dashboard" class="nav-brand">
+            <span class="nav-brand-icon">📈</span>
+            <span class="nav-brand-name">StockTracker</span>
+        </a>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🏠 Dashboard</a>
+            <a href="/tracker" class="nav-link">📈 Tracker</a>
+            <a href="/portfolio" class="nav-link">💼 Portfolio</a>
+            <a href="/compare" class="nav-link">⚖️ Compare</a>
+            <a href="/paper" class="nav-link active">🏆 Paper Trade</a>
+            <a href="/logout" class="nav-link danger">Logout</a>
+            <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">⏸ Loading</div>
+        </div>
+    </nav>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div style="font-size:1.5rem;font-weight:700;">🏆 Paper Trading <span style="font-size:0.85rem;color:#555;font-weight:400;">Virtual $100,000</span></div>
+        <button class="reset-btn" onclick="resetPortfolio()">🔄 Reset Portfolio</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-strip">
+        <div class="stat-card"><span>💵 Cash Available</span><strong id="ptCash">—</strong></div>
+        <div class="stat-card"><span>📊 Holdings Value</span><strong id="ptHoldings">—</strong></div>
+        <div class="stat-card"><span>💼 Total Assets</span><strong id="ptTotal">—</strong></div>
+        <div class="stat-card"><span>📈 Total Return</span><strong id="ptReturn">—</strong></div>
+    </div>
+
+    <div class="pt-grid">
+        <!-- Left -->
+        <div>
+            <!-- Buy Form -->
+            <div class="glass-card">
+                <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">📥 Buy Stock</div>
+                <div class="buy-form">
+                    <div>
+                        <label style="font-size:0.75rem;color:#666;display:block;margin-bottom:4px;">Symbol</label>
+                        <input class="inp" id="buySymbol" placeholder="AAPL, TCS.NS..." oninput="previewPrice()" autocomplete="off"/>
+                        <div class="price-preview" id="pricePreview"></div>
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:#666;display:block;margin-bottom:4px;">Shares</label>
+                        <input class="inp" type="number" id="buyShares" placeholder="10" min="1"/>
+                    </div>
+                    <button class="buy-btn" onclick="buyStock()">Buy 📈</button>
+                </div>
+                <div id="buyMsg" class="msg-bar hidden"></div>
+            </div>
+
+            <!-- Holdings -->
+            <div class="glass-card">
+                <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">📊 My Holdings</div>
+                <div id="holdingsTable"><div style="color:#444;text-align:center;padding:24px;">No holdings yet. Buy your first stock!</div></div>
+            </div>
+        </div>
+
+        <!-- Right — Leaderboard -->
+        <div>
+            <div class="glass-card">
+                <div style="font-size:0.9rem;font-weight:600;color:#aaa;margin-bottom:14px;">🏆 Leaderboard</div>
+                <div id="leaderboard"><div style="color:#444;text-align:center;padding:20px;">Loading...</div></div>
+            </div>
+
+            <!-- Quick Buy Chips -->
+            <div class="glass-card">
+                <div style="font-size:0.85rem;font-weight:600;color:#aaa;margin-bottom:10px;">⚡ Quick Buy</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <span class="chip" onclick="quickBuy('AAPL')">AAPL</span>
+                    <span class="chip" onclick="quickBuy('TSLA')">TSLA</span>
+                    <span class="chip" onclick="quickBuy('NVDA')">NVDA</span>
+                    <span class="chip" onclick="quickBuy('GOOGL')">GOOGL</span>
+                    <span class="chip" onclick="quickBuy('TCS.NS')">TCS</span>
+                    <span class="chip" onclick="quickBuy('RELIANCE.NS')">RELIANCE</span>
+                    <span class="chip" onclick="quickBuy('INFY.NS')">INFOSYS</span>
+                    <span class="chip" onclick="quickBuy('HDFCBANK.NS')">HDFC</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let priceTimer = null;
+
+function quickBuy(sym) {
+    document.getElementById('buySymbol').value = sym;
+    previewPrice();
+    document.getElementById('buyShares').focus();
+}
+
+async function previewPrice() {
+    clearTimeout(priceTimer);
+    const sym = document.getElementById('buySymbol').value.trim().toUpperCase();
+    if (!sym) { document.getElementById('pricePreview').textContent = ''; return; }
+    document.getElementById('pricePreview').textContent = 'fetching...';
+    priceTimer = setTimeout(async () => {
+        try {
+            const r = await fetch('/api/stock_price', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:sym})});
+            const d = await r.json();
+            if (d.error) { document.getElementById('pricePreview').textContent = 'Not found'; return; }
+            document.getElementById('pricePreview').textContent = `Current: $${d.price} (${d.change_pct >= 0 ? '+' : ''}${d.change_pct}%)`;
+        } catch(e) { document.getElementById('pricePreview').textContent = ''; }
+    }, 500);
+}
+
+async function buyStock() {
+    const symbol = document.getElementById('buySymbol').value.trim().toUpperCase();
+    const shares = document.getElementById('buyShares').value;
+    if (!symbol || !shares) { showMsg('Fill all fields', 'error'); return; }
+    const res = await fetch('/api/paper/buy', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({symbol, shares: parseFloat(shares)})
+    });
+    const data = await res.json();
+    showMsg(data.message || data.error, data.error ? 'error' : 'success');
+    if (!data.error) {
+        document.getElementById('buySymbol').value = '';
+        document.getElementById('buyShares').value = '';
+        document.getElementById('pricePreview').textContent = '';
+        loadStatus();
+    }
+}
+
+async function sellStock(id) {
+    if (!confirm('Sell this position?')) return;
+    const res = await fetch('/api/paper/sell', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id})
+    });
+    const data = await res.json();
+    showMsg(data.message || data.error, data.error ? 'error' : 'success');
+    if (!data.error) loadStatus();
+}
+
+async function resetPortfolio() {
+    if (!confirm('Reset to $100,000? All holdings will be cleared.')) return;
+    await fetch('/api/paper/reset', {method:'POST'});
+    loadStatus();
+}
+
+async function loadStatus() {
+    const res = await fetch('/api/paper/status');
+    const d = await res.json();
+    const retColor = d.return_pct >= 0 ? '#00e676' : '#ff5252';
+    document.getElementById('ptCash').textContent = '$' + d.cash.toLocaleString();
+    document.getElementById('ptHoldings').textContent = '$' + d.total_value.toLocaleString();
+    document.getElementById('ptTotal').textContent = '$' + d.total_assets.toLocaleString();
+    document.getElementById('ptReturn').innerHTML = `<span style="color:${retColor}">${d.return_pct >= 0 ? '+' : ''}${d.return_pct}%</span>`;
+
+    if (!d.holdings.length) {
+        document.getElementById('holdingsTable').innerHTML = '<div style="color:#444;text-align:center;padding:24px;">No holdings yet.</div>';
+        return;
+    }
+    document.getElementById('holdingsTable').innerHTML =
+        '<table class="htable"><thead><tr><th>Symbol</th><th>Shares</th><th>Buy</th><th>Now</th><th>P&L</th><th></th></tr></thead><tbody>' +
+        d.holdings.map(h => `<tr>
+            <td style="font-weight:700;color:#6c63ff;">${h.symbol}</td>
+            <td>${h.shares}</td>
+            <td>$${h.buy_price}</td>
+            <td>$${h.current_price}</td>
+            <td class="${h.pnl >= 0 ? 'green' : 'red'}">${h.pnl >= 0 ? '+' : ''}$${h.pnl} (${h.pnl_pct >= 0 ? '+' : ''}${h.pnl_pct}%)</td>
+            <td><button class="sell-btn" onclick="sellStock(${h.id})">Sell</button></td>
+        </tr>`).join('') + '</tbody></table>';
+}
+
+async function loadLeaderboard() {
+    const res = await fetch('/api/paper/leaderboard');
+    const board = await res.json();
+    const medals = ['🥇','🥈','🥉'];
+    document.getElementById('leaderboard').innerHTML = board.length
+        ? board.map(b => `
+            <div class="lb-row">
+                <span class="lb-rank">${medals[b.rank-1] || b.rank}</span>
+                <div style="flex:1"><div class="lb-name">${b.name}</div><div class="lb-total">$${b.total.toLocaleString()}</div></div>
+                <span class="lb-ret" style="color:${b.return_pct >= 0 ? '#00e676' : '#ff5252'}">${b.return_pct >= 0 ? '+' : ''}${b.return_pct}%</span>
+            </div>`).join('')
+        : '<div style="color:#444;text-align:center;padding:20px;">No players yet</div>';
+}
+
+function showMsg(text, type) {
+    const el = document.getElementById('buyMsg');
+    el.textContent = text;
+    el.className = 'msg-bar ' + type;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+async function loadMarketStatus() {
+    const r = await fetch('/api/market_status');
+    const d = await r.json();
+    const el = document.getElementById('mktStatus');
+    el.innerHTML = `<span style="width:7px;height:7px;background:${d.color};border-radius:50%;display:inline-block;${d.open?'animation:pulse 1.5s infinite':''}"></span> ${d.label}`;
+    el.style.color = d.color;
+    el.style.borderColor = d.color + '55';
+}
+
+loadStatus();
+loadLeaderboard();
+loadMarketStatus();
+setInterval(loadStatus, 30000);
+setInterval(loadLeaderboard, 60000);
+</script>
+</body>
+</html>
