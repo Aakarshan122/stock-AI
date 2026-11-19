@@ -23,7 +23,7 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT, email TEXT UNIQUE, password TEXT,
-        created TEXT
+        phone TEXT, created TEXT
     )''')
     c.execute('''CREATE TABLE IF NOT EXISTS alerts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,6 +64,7 @@ def init_db():
     ensure_col('alerts', 'volume_condition', 'TEXT DEFAULT NULL')
     ensure_col('watchlist', 'user_id', 'INTEGER DEFAULT 1')
     ensure_col('alert_history', 'user_id', 'INTEGER DEFAULT 1')
+    ensure_col('users', 'phone', 'TEXT DEFAULT NULL')
 
     conn.commit()
     conn.close()
@@ -72,6 +73,37 @@ init_db()
 
 def get_db():
     return sqlite3.connect(DB)
+
+# ── SMS via Twilio ────────────────────────────────────────────────────────────
+TWILIO_SID   = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_FROM  = os.environ.get('TWILIO_PHONE', '')   # e.g. +12345678900
+
+def send_sms(to_phone, message):
+    """Send SMS via Twilio REST API — no SDK needed (pure requests)"""
+    if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, to_phone]):
+        return False
+    # Ensure phone has country code
+    phone = to_phone.strip()
+    if not phone.startswith('+'):
+        phone = '+91' + phone  # default India
+    try:
+        import requests as req
+        resp = req.post(
+            f'https://api.twilio.com/2010-04-01/Accounts/{TWILIO_SID}/Messages.json',
+            auth=(TWILIO_SID, TWILIO_TOKEN),
+            data={'From': TWILIO_FROM, 'To': phone, 'Body': message[:1600]},
+            timeout=10
+        )
+        return resp.status_code == 201
+    except Exception:
+        return False
+
+def get_user_phone(user_id):
+    conn = get_db()
+    row = conn.execute('SELECT phone FROM users WHERE id=?', (user_id,)).fetchone()
+    conn.close()
+    return row[0] if row and row[0] else None
 
 def login_required(f):
     @wraps(f)
@@ -161,6 +193,10 @@ def check_alerts(user_id, symbol, price, change_pct, vol_ratio):
             c.execute("INSERT INTO alert_history (user_id, symbol, message, triggered_at) VALUES (?,?,?,?)",
                       (user_id, symbol, msg, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
             triggered.append(msg)
+            # Send SMS
+            phone = get_user_phone(user_id)
+            if phone:
+                send_sms(phone, f"StockTracker Alert:\n{msg}")
     conn.commit()
     conn.close()
     return triggered
@@ -294,13 +330,14 @@ def register():
     name = d.get('name', '').strip()
     email = d.get('email', '').strip()
     password = d.get('password', '')
+    phone = d.get('phone', '').strip() or None
     if not all([name, email, password]):
         return jsonify({'error': 'All fields required'}), 400
     hashed = bcrypt.generate_password_hash(password).decode('utf-8')
     try:
         conn = get_db()
-        conn.execute("INSERT INTO users (name, email, password, created) VALUES (?,?,?,?)",
-                     (name, email, hashed, datetime.now().strftime('%Y-%m-%d')))
+        conn.execute("INSERT INTO users (name, email, password, phone, created) VALUES (?,?,?,?,?)",
+                     (name, email, hashed, phone, datetime.now().strftime('%Y-%m-%d')))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Account created!'})
@@ -313,13 +350,25 @@ def login():
     email = d.get('email', '').strip()
     password = d.get('password', '')
     conn = get_db()
-    user = conn.execute("SELECT id, name, password FROM users WHERE email=?", (email,)).fetchone()
+    user = conn.execute("SELECT id, name, password, phone FROM users WHERE email=?", (email,)).fetchone()
     conn.close()
     if not user or not bcrypt.check_password_hash(user[2], password):
         return jsonify({'error': 'Invalid email or password'}), 401
     session['user_id'] = user[0]
     session['user_name'] = user[1]
+    session['user_phone'] = user[3] or ''
     return jsonify({'message': 'Login successful'})
+
+@app.route('/api/update_phone', methods=['POST'])
+@login_required
+def update_phone():
+    phone = request.json.get('phone', '').strip()
+    conn = get_db()
+    conn.execute('UPDATE users SET phone=? WHERE id=?', (phone, session['user_id']))
+    conn.commit()
+    conn.close()
+    session['user_phone'] = phone
+    return jsonify({'message': '✅ Phone number saved!'})
 
 @app.route('/logout')
 def logout():
@@ -750,6 +799,10 @@ def run_ai_agent():
                             conn.execute("INSERT INTO alert_history (user_id, symbol, message, triggered_at) VALUES (?,?,?,?)",
                                 (uid, symbol, msg, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                             conn.commit()
+                            # SMS
+                            phone = get_user_phone(uid)
+                            if phone:
+                                send_sms(phone, f"StockTracker AI Alert:\n{msg}")
                     except: continue
 
             # 2. Check active user-configured price alerts in background
@@ -786,6 +839,10 @@ def run_ai_agent():
                         conn.execute("INSERT INTO alert_history (user_id, symbol, message, triggered_at) VALUES (?,?,?,?)",
                             (uid, symbol, msg, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                         conn.commit()
+                        # SMS
+                        phone = get_user_phone(uid)
+                        if phone:
+                            send_sms(phone, f"StockTracker Alert:\n{msg}")
                 except: continue
 
             conn.close()

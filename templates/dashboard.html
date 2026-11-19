@@ -44,6 +44,184 @@
         .qa-btn { padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #ccc; font-size: 0.88rem; cursor: pointer; text-align: center; text-decoration: none; transition: all 0.2s; font-family: 'Inter', sans-serif; }
         .qa-btn:hover { background: rgba(108,99,255,0.15); border-color: rgba(108,99,255,0.3); color: #fff; }
         .loader-text { color: #444; font-size: 0.85rem; text-align: center; padding: 20px; }
+
+        /* ── Ticker Tape ─────────────────────────────────── */
+        .ticker-wrap { position: relative; overflow: hidden; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 14px; padding: 10px 0; margin-bottom: 18px; }
+        .ticker-wrap::before, .ticker-wrap::after { content: ''; position: absolute; top: 0; bottom: 0; width: 50px; z-index: 2; pointer-events: none; }
+        .ticker-wrap::before { left: 0; background: linear-gradient(90deg, #0a0a18, transparent); }
+        .ticker-wrap::after { right: 0; background: linear-gradient(270deg, #0a0a18, transparent); }
+        .ticker-track { display: inline-flex; white-space: nowrap; animation: tickerScroll 45s linear infinite; will-change: transform; }
+        .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+        @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .tk-item { display: inline-flex; align-items: center; gap: 8px; padding: 2px 20px; font-size: 0.85rem; border-right: 1px solid rgba(255,255,255,0.06); transition: background 0.3s; border-radius: 6px; }
+        .tk-sym { font-weight: 700; color: #9aa; letter-spacing: 0.5px; }
+        .tk-price { color: #eee; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .tk-chg { font-weight: 700; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+        .tk-chg.up { color: var(--green); } .tk-chg.down { color: var(--red); }
+
+        /* ── Price Flash ─────────────────────────────────── */
+        .flash-up { animation: flashUp 0.3s ease-out; }
+        .flash-down { animation: flashDown 0.3s ease-out; }
+        @keyframes flashUp { 0% { background-color: rgba(0,230,118,0.35) !important; box-shadow: 0 0 12px rgba(0,230,118,0.35); } 100% { background-color: transparent; box-shadow: none; } }
+        @keyframes flashDown { 0% { background-color: rgba(255,82,82,0.35) !important; box-shadow: 0 0 12px rgba(255,82,82,0.35); } 100% { background-color: transparent; box-shadow: none; } }
+
+        /* ── Heatmap ─────────────────────────────────────── */
+        .heatmap-box { display: flex; flex-wrap: wrap; gap: 3px; min-height: 240px; }
+        .hm-cell { position: relative; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.12s ease, filter 0.12s ease; overflow: hidden; min-width: 44px; min-height: 40px; padding: 2px; }
+        .hm-cell:hover { transform: scale(1.06); z-index: 5; filter: brightness(1.35); box-shadow: 0 4px 18px rgba(0,0,0,0.6); }
+        .hm-sym { font-size: 0.68rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); letter-spacing: 0.3px; }
+        .hm-chg { font-size: 0.62rem; font-weight: 600; color: rgba(255,255,255,0.85); }
+        .hm-legend { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: #666; margin-top: 12px; justify-content: center; }
+        .hm-legend .lg-block { width: 26px; height: 10px; border-radius: 3px; }
+
+        /* ── Movers Tabs ─────────────────────────────────── */
+        .mover-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+        .mover-tab { flex: 1; padding: 7px 6px; border-radius: 9px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: #888; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.18s; }
+        .mover-tab:hover { background: rgba(108,99,255,0.12); color: #ccc; }
+        .mover-tab.active { background: rgba(108,99,255,0.2); border-color: rgba(108,99,255,0.45); color: #fff; }
+
+        /* ── Breadth Gauge ───────────────────────────────── */
+        .breadth-wrap { display: flex; flex-direction: column; align-items: center; padding: 6px 0; }
+        .breadth-val { font-size: 1.5rem; font-weight: 800; margin-top: -34px; }
+        .breadth-label { font-size: 0.72rem; color: #777; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+        .breadth-split { display: flex; gap: 14px; margin-top: 10px; font-size: 0.8rem; }
+        .bd-up { color: var(--green); font-weight: 700; } .bd-dn { color: var(--red); font-weight: 700; }
+        .skel { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 37%, rgba(255,255,255,0.04) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+        body { padding-bottom: 130px; }
+
+        /* ── SVG Icon system ── */
+        .ico { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+        .ico-sm { width: 15px; height: 15px; }
+
+        /* ── Top bar (minimal, floating) ── */
+        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; padding: 12px 20px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(20px); }
+        .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+        .brand-mark { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #6c63ff, #00d4ff); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(108,99,255,0.4); }
+        .brand-mark .ico { stroke: #fff; }
+        .brand-name { font-weight: 800; font-size: 1.02rem; letter-spacing: -0.3px; color: #fff; line-height: 1.1; }
+        .brand-sub { font-size: 0.62rem; color: #556; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+        .topnav { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
+        .topnav-link { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 10px; font-size: 0.84rem; font-weight: 500; color: #9aa0b0; text-decoration: none; border: 1px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .topnav-link:hover { background: rgba(255,255,255,0.06); color: #fff; border-color: rgba(255,255,255,0.1); }
+        .topnav-link.active { background: rgba(108,99,255,0.16); color: #8b83ff; border-color: rgba(108,99,255,0.35); }
+        .topnav-link.logout { color: #ff6b6b; }
+        .topnav-link.logout:hover { background: rgba(255,82,82,0.12); border-color: rgba(255,82,82,0.32); color: #ff5252; }
+        @media (max-width: 1050px) { .topnav span { display: none; } .topnav-link { padding: 8px 10px; } }
+
+        .section-title::before { content: ''; width: 3px; height: 15px; border-radius: 3px; background: linear-gradient(180deg, #6c63ff, #00d4ff); flex-shrink: 0; }
+        .qa-btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        /* ── Floating Dock ── */
+        .dock { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 60; display: flex; gap: 5px; padding: 8px 10px; background: rgba(14,14,26,0.78); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; backdrop-filter: blur(24px) saturate(160%); box-shadow: 0 14px 44px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07); }
+        .dock-item { position: relative; width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #83839a; cursor: pointer; background: transparent; border: none; padding: 0; transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1); }
+        .dock-item:hover { color: #fff; background: rgba(108,99,255,0.2); transform: translateY(-9px); }
+        .dock-item.active { color: #fff; background: rgba(108,99,255,0.3); }
+        .dock-item.active::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: #6c63ff; box-shadow: 0 0 9px #6c63ff; }
+        .dock-item .tip { position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%) translateY(6px); padding: 6px 11px; background: rgba(20,20,34,0.97); border: 1px solid rgba(255,255,255,0.12); border-radius: 9px; font-size: 0.72rem; font-weight: 600; color: #ddd; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s; }
+        .dock-item:hover .tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .dock-sep { width: 1px; margin: 8px 3px; background: rgba(255,255,255,0.1); }
+        .dock-item.danger:hover { background: rgba(255,82,82,0.2); color: #ff5252; }
+
+        /* ── Modal (glass overlay) ── */
+        .overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(4,4,12,0.7); backdrop-filter: blur(8px); }
+        .overlay.open { display: flex; animation: ovIn 0.2s ease; }
+        @keyframes ovIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal { width: 100%; max-width: 450px; background: linear-gradient(160deg, rgba(26,26,44,0.97), rgba(13,13,25,0.99)); border: 1px solid rgba(255,255,255,0.11); border-radius: 22px; box-shadow: 0 30px 90px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08); overflow: hidden; animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(26px) scale(0.95); } to { opacity: 1; transform: none; } }
+        .modal-head { display: flex; align-items: center; gap: 14px; padding: 22px 22px 18px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .modal-ico { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(108,99,255,0.32), rgba(0,212,255,0.2)); border: 1px solid rgba(108,99,255,0.4); color: #9a94ff; }
+        .modal-ico .ico { width: 23px; height: 23px; }
+        .modal-title { font-size: 1.05rem; font-weight: 700; color: #fff; }
+        .modal-sub { font-size: 0.76rem; color: #666; margin-top: 3px; }
+        .modal-close { margin-left: auto; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.05); border: none; color: #888; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .modal-close:hover { background: rgba(255,82,82,0.16); color: #ff5252; }
+        .modal-body { padding: 20px 22px; }
+        .modal-foot { display: flex; gap: 10px; padding: 0 22px 22px; }
+        .m-btn { flex: 1; padding: 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #ccc; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .m-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .m-btn.primary { background: linear-gradient(135deg, #6c63ff, #00d4ff); border: none; color: #fff; }
+        .m-btn.primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .m-btn.danger { background: rgba(255,82,82,0.14); border-color: rgba(255,82,82,0.3); color: #ff5252; }
+        .m-btn.danger:hover { background: rgba(255,82,82,0.25); }
+        .m-stat { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06); border-radius: 11px; margin-bottom: 9px; }
+        .m-stat span { font-size: 0.8rem; color: #777; }
+        .m-stat strong { font-size: 0.9rem; color: #eee; font-variant-numeric: tabular-nums; text-align: right; }
+        .m-hint { font-size: 0.81rem; color: #777; line-height: 1.65; margin-bottom: 14px; }
+        .m-hint b { color: #aaa; }
+        .m-input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 11px; color: #fff; font-size: 0.9rem; font-family: 'Inter', sans-serif; margin-bottom: 10px; }
+        .m-input:focus { outline: none; border-color: #6c63ff; background: rgba(108,99,255,0.06); }
+        .m-input::placeholder { color: #444; }
+
+        @media (max-width: 560px) {
+            .dock-item { width: 42px; height: 42px; }
+            .topbar { flex-direction: column; gap: 12px; }
+        }
+
+        /* ════════ ANTIGRAVITY-STYLE SECTIONS ════════ */
+        .section-block { margin-bottom: 64px; }
+        .sec-eyebrow { display:inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent2); background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25); padding: 6px 16px; border-radius: 30px; margin-bottom: 18px; }
+        .sec-title { font-size: clamp(1.7rem, 3.5vw, 2.6rem); font-weight: 800; line-height: 1.1; letter-spacing: -1px; color: #fff; margin-bottom: 12px; }
+        .sec-title .grad { background: linear-gradient(120deg, #6c63ff, #00d4ff 60%, #00e676); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sec-sub { font-size: 1.02rem; color: #8890a3; max-width: 640px; line-height: 1.6; margin-bottom: 30px; }
+
+        /* Hero */
+        .hero { text-align: center; padding: 60px 20px 40px; position: relative; }
+        .hero-badge { display:inline-flex; align-items:center; gap:8px; font-size:0.78rem; font-weight:600; color:#9aa0b0; background: rgba(255,255,255,0.04); border:1px solid var(--border); padding:8px 18px; border-radius:30px; margin-bottom:28px; }
+        .hero h1 { font-size: clamp(2.4rem, 6vw, 4.4rem); font-weight: 800; line-height: 1.02; letter-spacing: -2.5px; color:#fff; margin-bottom: 22px; }
+        .hero h1 .grad { background: linear-gradient(120deg, #6c63ff, #00d4ff 45%, #00e676); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+        .hero p { font-size: clamp(1rem, 1.6vw, 1.2rem); color:#8890a3; max-width: 620px; margin: 0 auto 34px; line-height:1.6; }
+        .hero-cta { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom: 56px; }
+        .btn-grad { padding: 15px 34px; border-radius: 14px; background: linear-gradient(135deg, #6c63ff, #00d4ff); color:#fff; font-weight:700; font-size:0.95rem; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:9px; transition: all 0.25s; box-shadow: 0 8px 30px rgba(108,99,255,0.4); }
+        .btn-grad:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(108,99,255,0.55); }
+        .btn-ghost { padding: 15px 34px; border-radius: 14px; background: rgba(255,255,255,0.05); color:#ccc; font-weight:600; font-size:0.95rem; border:1px solid var(--border); cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:9px; transition: all 0.25s; }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); color:#fff; border-color: var(--border-hover); }
+
+        .hero-stats { display:grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 780px; margin: 0 auto; }
+        .hs-card { background: rgba(255,255,255,0.03); border:1px solid var(--border); border-radius: 18px; padding: 26px 20px; backdrop-filter: blur(10px); transition: all 0.3s; }
+        .hs-card:hover { border-color: rgba(108,99,255,0.4); transform: translateY(-4px); background: rgba(108,99,255,0.06); }
+        .hs-label { font-size:0.75rem; color:#666; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
+        .hs-val { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; color:#fff; font-variant-numeric: tabular-nums; }
+        @media(max-width:720px){ .hero-stats{grid-template-columns:1fr;} }
+        .ticker-wrap { border-radius: 18px; }
+
+        /* Features showcase grid */
+        .feat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        .feat-card { position:relative; background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); border:1px solid var(--border); border-radius: 20px; padding: 30px 26px; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); overflow:hidden; text-decoration:none; display:block; }
+        .feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, #6c63ff, #00d4ff); opacity:0; transition: opacity 0.35s; }
+        .feat-card:hover { transform: translateY(-6px); border-color: rgba(108,99,255,0.45); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .feat-card:hover::before { opacity:1; }
+        .feat-ico { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, rgba(108,99,255,0.25), rgba(0,212,255,0.15)); border:1px solid rgba(108,99,255,0.35); color:#8b83ff; margin-bottom:20px; }
+        .feat-ico .ico { width:26px; height:26px; }
+        .feat-card h3 { font-size:1.15rem; font-weight:700; color:#fff; margin-bottom:10px; }
+        .feat-card p { font-size:0.88rem; color:#7d8598; line-height:1.6; margin-bottom:16px; }
+        .feat-link { font-size:0.82rem; font-weight:600; color:var(--accent2); display:inline-flex; align-items:center; gap:6px; }
+        .feat-card:hover .feat-link { gap:10px; }
+
+        .split { display:grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: stretch; }
+        @media(max-width:860px){ .split{ grid-template-columns:1fr; } }
+        .split-card { background: rgba(255,255,255,0.03); border:1px solid var(--border); border-radius: 22px; padding: 34px; transition: all 0.3s; }
+        .split-card:hover { border-color: rgba(108,99,255,0.35); }
+
+        /* Scroll reveal */
+        .reveal { opacity: 0; transform: translateY(36px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16,1,0.3,1); }
+        .reveal.in { opacity: 1; transform: none; }
+        @media (prefers-reduced-motion: reduce) { .reveal { opacity:1; transform:none; transition:none; } }
+
+        /* Footer */
+        .site-footer { border-top:1px solid var(--border); margin-top: 70px; padding: 50px 0 30px; }
+        .foot-grid { display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+        .foot-brand .brand-name { font-size:1.3rem; font-weight:800; color:#fff; }
+        .foot-brand p { font-size:0.85rem; color:#666; line-height:1.6; margin-top:12px; max-width:280px; }
+        .foot-col h4 { font-size:0.78rem; text-transform:uppercase; letter-spacing:1.5px; color:#8890a3; margin-bottom:16px; }
+        .foot-col a { display:block; font-size:0.88rem; color:#666; text-decoration:none; margin-bottom:11px; transition: color 0.2s; }
+        .foot-col a:hover { color:#fff; }
+        .foot-bottom { border-top:1px solid var(--border); padding-top:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; font-size:0.8rem; color:#555; }
+        @media(max-width:760px){ .foot-grid{ grid-template-columns:1fr 1fr; } }
+
     </style>
 </head>
 <body>
@@ -52,90 +230,293 @@
 </div>
 <div class="container">
 
-    <!-- Nav -->
-    <nav class="navbar">
-        <a href="/dashboard" class="nav-brand">
-            <span class="nav-brand-icon">📈</span>
-            <span class="nav-brand-name">StockTracker</span>
+    <!-- Top Bar (brand + nav icons + status) -->
+    <nav class="topbar">
+        <a href="/dashboard" class="brand">
+            <span class="brand-mark">
+                <svg class="ico" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
+            </span>
+            <span>
+                <span class="brand-name">StockTracker</span>
+                <span class="brand-sub">Pro Terminal</span>
+            </span>
         </a>
-        <div class="nav-links">
-            <a href="/dashboard" class="nav-link active">🏠 Dashboard</a>
-            <a href="/tracker" class="nav-link">📈 Tracker</a>
-            <a href="/portfolio" class="nav-link">💼 Portfolio</a>
-            <a href="/compare" class="nav-link">⚖️ Compare</a>
-            <a href="/paper" class="nav-link">🏆 Paper Trade</a>
-            <a href="/logout" class="nav-link danger">Logout</a>
+
+        <div class="topnav" id="topnav">
+            <a href="/dashboard" class="topnav-link active">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="/tracker" class="topnav-link">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+                <span>Tracker</span>
+            </a>
+            <a href="/portfolio" class="topnav-link">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                <span>Portfolio</span>
+            </a>
+            <a href="/compare" class="topnav-link">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 4 4 4"/><path d="M16 7l4 4-4 4"/></svg>
+                <span>Compare</span>
+            </a>
+            <a href="/paper" class="topnav-link">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                <span>Paper</span>
+            </a>
+        </div>
+
+        <div class="topbar-right">
             <div class="live-pill"><span class="pulse-dot"></span> LIVE</div>
-            <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">⏸ Loading</div>
+            <div class="live-pill" id="mktStatus" style="border-color:rgba(255,82,82,0.3);color:#ff5252;">Loading</div>
+            <a href="/logout" class="topnav-link logout">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                <span>Logout</span>
+            </a>
         </div>
     </nav>
 
-    <!-- Greeting -->
-    <div class="greeting-card">
-        <h2 id="greetingText">Loading...</h2>
-        <p id="greetingDate"></p>
-        <div class="portfolio-strip" id="portfolioStrip">
-            <div class="p-stat"><span>Portfolio Value</span><strong id="portValue">—</strong></div>
-            <div class="p-stat"><span>Today's P&L</span><strong id="todayPnl">—</strong></div>
-            <div class="p-stat"><span>Overall Return</span><strong id="overallReturn">—</strong></div>
+    <!-- ═══ HERO ═══ -->
+    <section class="hero reveal">
+        <div class="hero-badge"><span class="pulse-dot"></span> Real-time market intelligence</div>
+        <h1 id="greetingText" class="hero-h">Loading…</h1>
+        <p id="greetingDate" class="hero-subp"></p>
+        <div class="hero-cta">
+            <a href="/tracker" class="btn-grad"><svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Track a Stock</a>
+            <a href="/paper" class="btn-ghost"><svg class="ico" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> Paper Trading</a>
         </div>
-    </div>
+        <div class="hero-stats" id="portfolioStrip">
+            <div class="hs-card"><div class="hs-label">Portfolio Value</div><div class="hs-val" id="portValue">—</div></div>
+            <div class="hs-card"><div class="hs-label">Today's P&L</div><div class="hs-val" id="todayPnl">—</div></div>
+            <div class="hs-card"><div class="hs-label">Overall Return</div><div class="hs-val" id="overallReturn">—</div></div>
+        </div>
+    </section>
 
-    <!-- Dashboard Grid -->
-    <div class="dashboard-grid">
-
-        <!-- Left -->
-        <div>
-            <!-- Global Markets -->
-            <div class="glass-card">
-                <div class="section-title">🌎 Global Markets</div>
-                <div id="marketsList"><div class="loader-text">Loading markets...</div></div>
-            </div>
-
-            <!-- Watchlist -->
-            <div class="glass-card">
-                <div class="section-title">⭐ My Watchlist <span style="margin-left:auto;font-size:0.78rem;color:#555;">Click to track</span></div>
-                <div id="watchlistDash"><div class="loader-text">Loading...</div></div>
+    <!-- ═══ LIVE TICKER ═══ -->
+    <section class="section-block reveal">
+        <div class="ticker-wrap" id="tickerWrap">
+            <div class="ticker-track" id="tickerTrack">
+                <span class="tk-item" style="color:#555;">Loading live ticker…</span>
             </div>
         </div>
+    </section>
 
-        <!-- Right -->
-        <div>
-            <!-- Quick Actions -->
+    <!-- ═══ MARKET MAP ═══ -->
+    <section class="section-block reveal">
+        <span class="sec-eyebrow">Market Map</span>
+        <h2 class="sec-title">See the whole market <span class="grad">at a glance</span></h2>
+        <p class="sec-sub">Real-time NIFTY 50 heatmap sized by market cap, plus an advance/decline breadth gauge that tells you the mood of the market instantly.</p>
+        <div class="dashboard-grid" style="grid-template-columns: 1.7fr 1fr;">
             <div class="glass-card">
-                <div class="section-title">⚡ Quick Actions</div>
-                <div class="quick-actions">
-                    <a href="/tracker" class="qa-btn">📈 Track Stock</a>
-                    <a href="/portfolio" class="qa-btn">💼 Portfolio</a>
-                    <a href="/tracker" class="qa-btn">🔔 Set Alert</a>
-                    <a href="/portfolio" class="qa-btn">➕ Add Stock</a>
+                <div class="section-title">NIFTY 50 Live Heatmap
+                    <span style="margin-left:auto;font-size:0.72rem;color:#555;" id="hmUpdated"></span>
+                </div>
+                <div class="heatmap-box" id="heatmapBox"><div class="loader-text">Loading heatmap…</div></div>
+                <div class="hm-legend">
+                    <span>-4%</span>
+                    <span class="lg-block" style="background:#ff3b3b;"></span>
+                    <span class="lg-block" style="background:#ff8a80;"></span>
+                    <span class="lg-block" style="background:#3a3a4a;"></span>
+                    <span class="lg-block" style="background:#69f0ae;"></span>
+                    <span class="lg-block" style="background:#00e676;"></span>
+                    <span>+4%</span>
+                    <span style="margin-left:12px;color:#444;">size = market cap</span>
                 </div>
             </div>
-
-            <!-- Risk Analysis -->
-            <div class="glass-card" id="riskCard">
-                <div class="section-title">🧮 Portfolio Risk</div>
-                <div id="riskContent"><div class="loader-text">Add stocks to see risk analysis</div></div>
-            </div>
-
-            <!-- Market Movers hint -->
             <div class="glass-card">
-                <div class="section-title">🔥 Market Movers</div>
-                <div style="display:flex;flex-direction:column;gap:8px;" id="moversSection">
-                    <div class="loader-text">Loading...</div>
+                <div class="section-title">Market Breadth</div>
+                <div class="breadth-wrap" id="breadthWrap">
+                    <div class="skel" style="width:180px;height:90px;"></div>
                 </div>
             </div>
         </div>
+    </section>
+
+    <!-- ═══ WATCHLIST + MARKETS ═══ -->
+    <section class="section-block reveal">
+        <span class="sec-eyebrow">Track & Discover</span>
+        <h2 class="sec-title">Your watchlist, <span class="grad">global markets</span></h2>
+        <p class="sec-sub">Follow the stocks you care about and keep an eye on major indices, commodities and world markets — all live.</p>
+        <div class="dashboard-grid">
+            <div>
+                <div class="glass-card">
+                    <div class="section-title">Global Markets</div>
+                    <div id="marketsList"><div class="loader-text">Loading markets...</div></div>
+                </div>
+                <div class="glass-card">
+                    <div class="section-title">My Watchlist <span style="margin-left:auto;font-size:0.78rem;color:#555;">Click to track</span></div>
+                    <div id="watchlistDash"><div class="loader-text">Loading...</div></div>
+                </div>
+            </div>
+            <div>
+                <div class="glass-card">
+                    <div class="section-title">Quick Actions</div>
+                    <div class="quick-actions">
+                        <a href="/tracker" class="qa-btn"><svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Track Stock</a>
+                        <a href="/portfolio" class="qa-btn"><svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> Portfolio</a>
+                        <a href="/tracker" class="qa-btn"><svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Set Alert</a>
+                        <a href="/portfolio" class="qa-btn"><svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Add Stock</a>
+                    </div>
+                </div>
+                <div class="glass-card" id="riskCard">
+                    <div class="section-title">Portfolio Risk</div>
+                    <div id="riskContent"><div class="loader-text">Add stocks to see risk analysis</div></div>
+                </div>
+                <div class="glass-card">
+                    <div class="section-title">Market Movers <span style="margin-left:auto;font-size:0.72rem;color:#555;" id="moversUpdated"></span></div>
+                    <div class="mover-tabs">
+                        <button class="mover-tab active" data-tab="gainers">Gainers</button>
+                        <button class="mover-tab" data-tab="losers">Losers</button>
+                        <button class="mover-tab" data-tab="active">Most Active</button>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;" id="moversSection">
+                        <div class="loader-text">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ FEATURES SHOWCASE ═══ -->
+    <section class="section-block reveal">
+        <span class="sec-eyebrow">Everything included</span>
+        <h2 class="sec-title">One terminal, <span class="grad">every tool you need</span></h2>
+        <p class="sec-sub">From live charting to paper trading and AI insights — a complete professional trading workspace, free.</p>
+        <div class="feat-grid">
+            <a href="/tracker" class="feat-card">
+                <div class="feat-ico"><svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+                <h3>Pro Charting</h3>
+                <p>TradingView candlesticks, Line &amp; Area views with EMA/SMA overlays and live crosshair.</p>
+                <span class="feat-link">Open Tracker →</span>
+            </a>
+            <a href="/portfolio" class="feat-card">
+                <div class="feat-ico"><svg class="ico" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+                <h3>Portfolio Analytics</h3>
+                <p>Holdings, P&amp;L, sector allocation, diversification score and risk analysis.</p>
+                <span class="feat-link">View Portfolio →</span>
+            </a>
+            <a href="/compare" class="feat-card">
+                <div class="feat-ico"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 4 4 4"/><path d="M16 7l4 4-4 4"/></svg></div>
+                <h3>Stock Compare</h3>
+                <p>Put up to 4 stocks side-by-side across valuation, returns and fundamentals.</p>
+                <span class="feat-link">Compare Now →</span>
+            </a>
+            <a href="/paper" class="feat-card">
+                <div class="feat-ico"><svg class="ico" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
+                <h3>Paper Trading</h3>
+                <p>Trade with $100K virtual cash at live prices and climb the leaderboard — zero risk.</p>
+                <span class="feat-link">Start Trading →</span>
+            </a>
+            <a href="/tracker" class="feat-card">
+                <div class="feat-ico"><svg class="ico" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+                <h3>Smart Alerts</h3>
+                <p>Price, percentage and volume-condition alerts that trigger in the background.</p>
+                <span class="feat-link">Set Alerts →</span>
+            </a>
+            <a href="/tracker" class="feat-card">
+                <div class="feat-ico"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/><circle cx="12" cy="12" r="3"/></svg></div>
+                <h3>AI Insights</h3>
+                <p>Background agent analyses your holdings and surfaces momentum, volume &amp; 52w signals.</p>
+                <span class="feat-link">See Insights →</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- ═══ FOOTER ═══ -->
+    <footer class="site-footer reveal">
+        <div class="foot-grid">
+            <div class="foot-brand">
+                <span class="brand-name">StockTracker</span>
+                <p>A real-time market terminal with live data, pro charting and AI-driven insights. Built for traders and investors.</p>
+            </div>
+            <div class="foot-col">
+                <h4>Product</h4>
+                <a href="/tracker">Tracker</a>
+                <a href="/portfolio">Portfolio</a>
+                <a href="/compare">Compare</a>
+                <a href="/paper">Paper Trading</a>
+            </div>
+            <div class="foot-col">
+                <h4>Markets</h4>
+                <a href="/tracker">NIFTY 50</a>
+                <a href="/tracker">Heatmap</a>
+                <a href="/tracker">Movers</a>
+                <a href="/tracker">Alerts</a>
+            </div>
+            <div class="foot-col">
+                <h4>Resources</h4>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/tracker">Indicators</a>
+                <a href="/paper">Leaderboard</a>
+                <a href="#" onclick="openPhoneModal()">SMS Alerts Setup</a>
+                <a href="/logout">Sign Out</a>
+            </div>
+        </div>
+        <div class="foot-bottom">
+            <span>© 2026 StockTracker — Market data for educational purposes only, not financial advice.</span>
+            <span>Data via Yahoo Finance</span>
+        </div>
+    </footer>
+
+</div>
+
+<!-- ═══ Floating Dock ═══ -->
+<nav class="dock" id="dock">
+    <button class="dock-item active" data-action="dashboard">
+        <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="tip">Dashboard</span>
+    </button>
+    <button class="dock-item" data-action="tracker">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        <span class="tip">Tracker</span>
+    </button>
+    <button class="dock-item" data-action="portfolio">
+        <svg class="ico" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        <span class="tip">Portfolio</span>
+    </button>
+    <button class="dock-item" data-action="compare">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 4 4 4"/><path d="M16 7l4 4-4 4"/></svg>
+        <span class="tip">Compare</span>
+    </button>
+    <button class="dock-item" data-action="paper">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        <span class="tip">Paper Trade</span>
+    </button>
+    <span class="dock-sep"></span>
+    <button class="dock-item danger" data-action="logout">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        <span class="tip">Logout</span>
+    </button>
+</nav>
+
+<!-- ═══ Modal Overlay ═══ -->
+<div class="overlay" id="overlay">
+    <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-head">
+            <div class="modal-ico" id="mIco"></div>
+            <div>
+                <div class="modal-title" id="mTitle">Title</div>
+                <div class="modal-sub" id="mSub">Subtitle</div>
+            </div>
+            <button class="modal-close" id="mClose" aria-label="Close">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body" id="mBody"></div>
+        <div class="modal-foot" id="mFoot"></div>
     </div>
 </div>
 
 <script>
     document.getElementById('greetingDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+    function getCurr(sym) {
+        return (sym && (sym.endsWith('.NS') || sym.endsWith('.BO'))) ? '₹' : '$';
+    }
+
     async function loadGreeting() {
         const res = await fetch('/api/dashboard_data');
         const data = await res.json();
-        document.getElementById('greetingText').textContent = `${data.greeting}, ${data.name} 👋`;
+        document.getElementById('greetingText').textContent = `${data.greeting}, ${data.name}`;
     }
 
     async function loadMarkets() {
@@ -149,14 +530,145 @@
                 <span class="market-chg ${m.change >= 0 ? 'up' : 'down'}">${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}%</span>
             </div>
         `).join('');
-        const movers = [...markets].sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 3);
-        document.getElementById('moversSection').innerHTML = movers.map(m => `
-            <div class="market-row">
-                <span class="market-name">${m.name}</span>
-                <span class="market-chg ${m.change >= 0 ? 'up' : 'down'}">${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}%</span>
-            </div>
-        `).join('');
     }
+
+    // ── Live Ticker Tape ─────────────────────────────────────
+    async function loadTicker() {
+        try {
+            const res = await fetch('/api/ticker');
+            const d = await res.json();
+            const items = [];
+            (d.indices || []).forEach(i => items.push({ ...i, kind: 'index' }));
+            (d.watchlist || []).forEach(w => items.push({ ...w, kind: 'wl' }));
+            if (items.length === 0) return;
+            const html = items.map(it => {
+                const isIdx = it.kind === 'index';
+                const inr = it.symbol.endsWith('.NS') || it.symbol.endsWith('.BO');
+                const priceStr = isIdx
+                    ? it.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+                    : (inr ? '₹' : '$') + it.price;
+                return `<span class="tk-item" data-tsym="${it.symbol}" data-price="${it.price}">
+                    <span class="tk-sym">${it.symbol}</span>
+                    <span class="tk-price">${priceStr}</span>
+                    <span class="tk-chg ${it.change >= 0 ? 'up' : 'down'}">${it.change >= 0 ? '▲' : '▼'} ${Math.abs(it.change)}%</span>
+                </span>`;
+            }).join('');
+            document.getElementById('tickerTrack').innerHTML = html + html;
+            flashChanged('tickerTrack');
+        } catch (e) {}
+    }
+
+    // ── Green/Red flash on price change (300ms) ──────────────
+    const _prev = {};
+    function flashChanged(scopeId) {
+        const scope = document.getElementById(scopeId);
+        if (!scope) return;
+        scope.querySelectorAll('[data-tsym]').forEach(el => {
+            const sym = el.getAttribute('data-tsym');
+            const now = parseFloat(el.getAttribute('data-price'));
+            if (isNaN(now)) return;
+            if (_prev[sym] !== undefined && now !== _prev[sym]) {
+                const cls = now > _prev[sym] ? 'flash-up' : 'flash-down';
+                el.classList.remove('flash-up', 'flash-down');
+                void el.offsetWidth;
+                el.classList.add(cls);
+                setTimeout(() => el.classList.remove('flash-up', 'flash-down'), 320);
+            }
+            _prev[sym] = now;
+        });
+    }
+
+    // ── NIFTY 50 Heatmap + Market Breadth ────────────────────
+    async function loadOverview() {
+        try {
+            const res = await fetch('/api/market_overview');
+            const d = await res.json();
+            const stocks = (d.stocks || []).filter(s => s.price > 0);
+            window._mvStocks = d.stocks || [];
+            renderHeatmap(stocks);
+            renderBreadth(d.breadth || {});
+            renderMovers();
+            const upd = document.getElementById('hmUpdated');
+            if (upd) upd.textContent = 'updated ' + (d.updated || '');
+        } catch (e) {}
+    }
+
+    function heatColor(chg) {
+        const c = Math.max(-5, Math.min(5, chg));
+        const t = Math.abs(c) / 5;
+        if (c >= 0) return `rgb(${Math.round(12 + 18 * (1 - t))},${Math.round(60 + 176 * t)},${Math.round(50 + 68 * t)})`;
+        return `rgb(${Math.round(80 + 175 * t)},${Math.round(30 + 32 * (1 - t))},${Math.round(35 + 30 * (1 - t))})`;
+    }
+
+    function renderHeatmap(stocks) {
+        const box = document.getElementById('heatmapBox');
+        if (!box || stocks.length === 0) return;
+        const hasCap = stocks.some(s => s.cap > 0);
+        const wts = stocks.map(s => (hasCap && s.cap > 0) ? s.cap : 1);
+        const total = wts.reduce((a, b) => a + b, 0);
+        box.innerHTML = stocks.map((s, i) => {
+            const pct = wts[i] / total;
+            const label = s.symbol.replace('.NS', '').replace('.BO', '');
+            return `<div class="hm-cell" style="flex-grow:${Math.max(1, Math.round(pct * 100))};flex-basis:${Math.max(48, pct * 300)}px;background:${heatColor(s.change)};" title="${s.name} — ₹${s.price} (${s.change >= 0 ? '+' : ''}${s.change}%)">
+                <span class="hm-sym">${label}</span>
+                ${pct > 0.018 ? `<span class="hm-chg">${s.change >= 0 ? '+' : ''}${s.change}%</span>` : ''}
+            </div>`;
+        }).join('');
+    }
+
+    function renderBreadth(b) {
+        const wrap = document.getElementById('breadthWrap');
+        if (!wrap) return;
+        const adv = b.advances || 0, dec = b.declines || 0, unch = b.unchanged || 0;
+        const ratio = adv / (adv + dec || 1);
+        const pct = Math.round(ratio * 100);
+        let label = 'NEUTRAL', color = '#ff9800';
+        if (pct >= 75) { label = 'EXTREME BULLISH'; color = '#00e676'; }
+        else if (pct >= 60) { label = 'BULLISH'; color = '#69f0ae'; }
+        else if (pct <= 25) { label = 'EXTREME BEARISH'; color = '#ff5252'; }
+        else if (pct <= 40) { label = 'BEARISH'; color = '#ff8a80'; }
+        const angle = -90 + ratio * 180;
+        wrap.innerHTML = `
+            <svg width="200" height="115" viewBox="0 0 200 115">
+                <defs><linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ff5252"/><stop offset="50%" stop-color="#ff9800"/><stop offset="100%" stop-color="#00e676"/>
+                </linearGradient></defs>
+                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="16" stroke-linecap="round"/>
+                <g transform="rotate(${angle} 100 100)">
+                    <line x1="100" y1="100" x2="100" y2="34" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+                </g>
+                <circle cx="100" cy="100" r="7" fill="#fff"/>
+            </svg>
+            <div class="breadth-val" style="color:${color}">${pct}%</div>
+            <div class="breadth-label" style="color:${color}">${label}</div>
+            <div class="breadth-split">
+                <span class="bd-up">▲ ${adv}</span><span class="bd-dn">▼ ${dec}</span><span style="color:#666;">— ${unch}</span>
+            </div>`;
+    }
+
+    // ── Movers tabs (Gainers / Losers / Active) ──────────────
+    let _moverTab = 'gainers';
+    function renderMovers() {
+        const stocks = (window._mvStocks || []).filter(s => s.price > 0);
+        const el = document.getElementById('moversSection');
+        if (!el || stocks.length === 0) return;
+        let list;
+        if (_moverTab === 'losers') list = [...stocks].sort((a, b) => a.change - b.change).slice(0, 5);
+        else if (_moverTab === 'active') list = [...stocks].sort((a, b) => b.volume - a.volume).slice(0, 5);
+        else list = [...stocks].sort((a, b) => b.change - a.change).slice(0, 5);
+        el.innerHTML = list.map(s => `
+            <div class="market-row">
+                <span class="market-name">${s.symbol.replace('.NS', '')}</span>
+                <span class="market-price">${s.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                <span class="market-chg ${s.change >= 0 ? 'up' : 'down'}">${s.change >= 0 ? '▲' : '▼'} ${Math.abs(s.change)}%</span>
+            </div>`).join('');
+    }
+    document.querySelectorAll('.mover-tab').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.mover-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _moverTab = btn.getAttribute('data-tab');
+        renderMovers();
+    }));
 
     async function loadWatchlist() {
         const res = await fetch('/api/watchlist_prices');
@@ -165,13 +677,15 @@
         if (list.length === 0) {
             wDiv.innerHTML = '<div class="loader-text">No stocks in watchlist. <a href="/tracker" style="color:#6c63ff;">Add some →</a></div>';
         } else {
-            wDiv.innerHTML = list.map(w => `
+            wDiv.innerHTML = list.map(w => {
+                const cur = getCurr(w.symbol);
+                return `
                 <div class="wl-row" onclick="window.location.href='/tracker'">
                     <span class="wl-sym">${w.symbol}</span>
-                    <span class="wl-price">$${w.price}</span>
+                    <span class="wl-price">${cur}${w.price}</span>
                     <span class="wl-chg ${w.change_pct >= 0 ? 'up' : 'down'}">${w.change_pct >= 0 ? '▲' : '▼'} ${Math.abs(w.change_pct)}%</span>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
     }
 
@@ -209,9 +723,13 @@
     loadMarkets();
     loadWatchlist();
     loadPortfolioStrip();
+    loadTicker();
+    loadOverview();
     setInterval(loadMarkets, 60000);
     setInterval(loadWatchlist, 30000);
     setInterval(loadPortfolioStrip, 30000);
+    setInterval(loadTicker, 15000);
+    setInterval(loadOverview, 60000);
 
     async function loadMarketStatus() {
         const r = await fetch('/api/market_status');
@@ -223,6 +741,121 @@
     }
     loadMarketStatus();
     setInterval(loadMarketStatus, 60000);
+
+    // ═══ Floating Dock → Modal ═══
+    const MODALS = {
+        dashboard: {
+            icon: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+            title: 'Dashboard', sub: 'Overview & market snapshot',
+            body: () => `
+                <div class="m-stat"><span>Status</span><strong>${document.getElementById('mktStatus').textContent.trim()}</strong></div>
+                <div class="m-stat"><span>Portfolio Value</span><strong>${document.getElementById('portValue').textContent}</strong></div>
+                <div class="m-stat"><span>Today's P&L</span><strong>${document.getElementById('todayPnl').textContent}</strong></div>
+                <div class="m-hint">Live ticker, NIFTY heatmap and market breadth update automatically on this page.</div>`,
+            foot: [{ label: 'Stay Here', act: 'close' }, { label: 'Open Tracker', href: '/tracker', primary: true }]
+        },
+        tracker: {
+            icon: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',
+            title: 'Stock Tracker', sub: 'Search & analyze any stock',
+            body: () => `
+                <div class="m-hint">Live price, chart, indicators (RSI/MACD/EMA), news and price alerts.</div>
+                <input class="m-input" id="mSym" placeholder="e.g. RELIANCE.NS or AAPL" autocomplete="off">`,
+            foot: [{ label: 'Cancel', act: 'close' }, { label: 'Track Stock', act: 'track', primary: true }]
+        },
+        portfolio: {
+            icon: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+            title: 'Portfolio', sub: 'Holdings, P&L & risk analysis',
+            body: () => `
+                <div class="m-stat"><span>Total Value</span><strong>${document.getElementById('portValue').textContent}</strong></div>
+                <div class="m-stat"><span>Overall Return</span><strong>${document.getElementById('overallReturn').textContent}</strong></div>
+                <div class="m-hint">Sector allocation, diversification score, best/worst performers and P&L graph.</div>`,
+            foot: [{ label: 'Close', act: 'close' }, { label: 'Open Portfolio', href: '/portfolio', primary: true }]
+        },
+        compare: {
+            icon: '<path d="M12 3v18"/><path d="M8 7l-4 4 4 4"/><path d="M16 7l4 4-4 4"/>',
+            title: 'Compare Stocks', sub: 'Side-by-side metrics',
+            body: () => `<div class="m-hint">Compare up to 4 stocks across valuation, returns, margins and fundamentals with a normalized performance chart.</div>`,
+            foot: [{ label: 'Close', act: 'close' }, { label: 'Open Compare', href: '/compare', primary: true }]
+        },
+        paper: {
+            icon: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+            title: 'Paper Trading', sub: 'Virtual $100,000 account',
+            body: () => `<div class="m-hint">Practice trading with virtual cash. Buy and sell at live prices, track returns and climb the leaderboard — zero risk.</div>`,
+            foot: [{ label: 'Close', act: 'close' }, { label: 'Start Trading', href: '/paper', primary: true }]
+        },
+        logout: {
+            icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+            title: 'Logout', sub: 'End your session',
+            body: () => `<div class="m-hint">Are you sure you want to sign out? Your portfolio and watchlist stay saved.</div>`,
+            foot: [{ label: 'Cancel', act: 'close' }, { label: 'Sign Out', href: '/logout', danger: true }]
+        }
+    };
+
+    function openModal(key) {
+        const cfg = MODALS[key];
+        if (!cfg) return;
+        document.getElementById('mIco').innerHTML = `<svg class="ico" viewBox="0 0 24 24">${cfg.icon}</svg>`;
+        document.getElementById('mTitle').textContent = cfg.title;
+        document.getElementById('mSub').textContent = cfg.sub;
+        document.getElementById('mBody').innerHTML = cfg.body();
+        document.getElementById('mFoot').innerHTML = cfg.foot.map(b => {
+            if (b.href) return `<a class="m-btn ${b.primary ? 'primary' : ''} ${b.danger ? 'danger' : ''}" href="${b.href}">${b.label}</a>`;
+            return `<button class="m-btn ${b.primary ? 'primary' : ''}" data-act="${b.act}">${b.label}</button>`;
+        }).join('');
+        document.getElementById('overlay').classList.add('open');
+        document.querySelectorAll('.dock-item').forEach(i => i.classList.toggle('active', i.dataset.action === key));
+        const sym = document.getElementById('mSym');
+        if (sym) setTimeout(() => sym.focus(), 120);
+    }
+
+    function closeModal() {
+        document.getElementById('overlay').classList.remove('open');
+        document.querySelectorAll('.dock-item').forEach(i => i.classList.toggle('active', i.dataset.action === 'dashboard'));
+    }
+
+    document.querySelectorAll('.dock-item').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.action)));
+    document.getElementById('mClose').addEventListener('click', closeModal);
+    document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
+    document.getElementById('mFoot').addEventListener('click', e => {
+        const b = e.target.closest('[data-act]');
+        if (!b) return;
+        if (b.dataset.act === 'close') closeModal();
+        if (b.dataset.act === 'track') {
+            const s = (document.getElementById('mSym').value || '').trim().toUpperCase();
+            window.location.href = s ? `/tracker?symbol=${encodeURIComponent(s)}` : '/tracker';
+        }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // ── Phone Number Modal ──────────────────────────────────────────────────────────
+    function openPhoneModal() {
+        document.getElementById('mIco').innerHTML = `<svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
+        document.getElementById('mTitle').textContent = 'SMS Alert Setup';
+        document.getElementById('mSub').textContent = 'Get notified on your phone when alerts trigger';
+        document.getElementById('mBody').innerHTML = `
+            <div class="m-hint">Enter your phone number with country code. When a price alert triggers, you\'ll get an SMS instantly.</div>
+            <input class="m-input" id="phoneInput" type="tel" placeholder="+91 9876543210" autocomplete="tel">
+            <div id="phoneMsg" style="font-size:0.82rem;margin-top:6px;"></div>
+            <div class="m-hint" style="margin-top:10px;color:#555;">Powered by Twilio. Standard SMS rates apply.</div>`;
+        document.getElementById('mFoot').innerHTML = `
+            <button class="m-btn" onclick="closeModal()">Cancel</button>
+            <button class="m-btn primary" onclick="savePhone()">Save & Enable SMS</button>`;
+        document.getElementById('overlay').classList.add('open');
+        setTimeout(() => document.getElementById('phoneInput').focus(), 120);
+    }
+
+    async function savePhone() {
+        const phone = document.getElementById('phoneInput').value.trim();
+        const msgEl = document.getElementById('phoneMsg');
+        if (!phone) { msgEl.style.color = '#ff5252'; msgEl.textContent = 'Please enter a phone number'; return; }
+        const res = await fetch('/api/update_phone', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ phone })
+        });
+        const data = await res.json();
+        if (data.error) { msgEl.style.color = '#ff5252'; msgEl.textContent = data.error; }
+        else { msgEl.style.color = '#00e676'; msgEl.textContent = '✅ Phone saved! SMS alerts are now active.'; setTimeout(closeModal, 1500); }
+    }
 </script>
 </body>
 </html>
