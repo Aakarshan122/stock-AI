@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite Database (personal user data & passwords)
+*.db
+*.sqlite3
+
+# Generated charts
+static/charts/
+static/*_chart.png
+
+# Generated PDF reports (too large for git)
+static/reports/*.pdf
+
+# Trained ML models (retrain on server)
+models/*.pkl
+!models/.gitkeep
+!static/reports/.gitkeep
+
+# Environment & secrets
+.env
+.env.*
+venv/
+env/
+.venv/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp

@@ -1,5 +1,5 @@
 import threading, time
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
 from flask_bcrypt import Bcrypt
 import yfinance as yf
 import pandas as pd
@@ -7,8 +7,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import sqlite3, os, json, feedparser
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'stocktracker_secret_2024')
@@ -49,6 +50,21 @@ def init_db():
         user_id INTEGER, symbol TEXT, insight TEXT,
         insight_type TEXT, created TEXT
     )''')
+
+    # Self-healing column checks for backwards compatibility
+    def ensure_col(table, col, col_def):
+        try:
+            cols = [r[1] for r in c.execute(f"PRAGMA table_info({table})").fetchall()]
+            if col not in cols:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
+        except Exception:
+            pass
+
+    ensure_col('alerts', 'user_id', 'INTEGER DEFAULT 1')
+    ensure_col('alerts', 'volume_condition', 'TEXT DEFAULT NULL')
+    ensure_col('watchlist', 'user_id', 'INTEGER DEFAULT 1')
+    ensure_col('alert_history', 'user_id', 'INTEGER DEFAULT 1')
+
     conn.commit()
     conn.close()
 
@@ -98,21 +114,23 @@ def get_stock_data(symbol):
 
 def generate_chart(symbol, history, user_id):
     fig, ax = plt.subplots(figsize=(10, 3.5))
-    closes = history['Close']
-    color = '#00e676' if closes.iloc[-1] >= closes.iloc[0] else '#ff5252'
-    ax.plot(history.index, closes, color=color, linewidth=2)
-    ax.fill_between(history.index, closes, alpha=0.08, color=color)
-    ax.set_title(f'{symbol} — 30 Day Price', color='#ccc', fontsize=12, pad=10)
-    ax.tick_params(colors='#555', labelsize=8)
-    ax.set_facecolor('#0a0a14')
-    fig.patch.set_facecolor('#0a0a14')
-    for spine in ax.spines.values():
-        spine.set_edgecolor('#1e1e30')
-    path = f'static/charts/{user_id}_{symbol}_chart.png'
-    os.makedirs('static/charts', exist_ok=True)
-    plt.savefig(path, bbox_inches='tight', dpi=100)
-    plt.close()
-    return path
+    try:
+        closes = history['Close']
+        color = '#00e676' if closes.iloc[-1] >= closes.iloc[0] else '#ff5252'
+        ax.plot(history.index, closes, color=color, linewidth=2)
+        ax.fill_between(history.index, closes, alpha=0.08, color=color)
+        ax.set_title(f'{symbol} — 30 Day Price', color='#ccc', fontsize=12, pad=10)
+        ax.tick_params(colors='#555', labelsize=8)
+        ax.set_facecolor('#0a0a14')
+        fig.patch.set_facecolor('#0a0a14')
+        for spine in ax.spines.values():
+            spine.set_edgecolor('#1e1e30')
+        path = f'static/charts/{user_id}_{symbol}_chart.png'
+        os.makedirs('static/charts', exist_ok=True)
+        fig.savefig(path, bbox_inches='tight', dpi=100)
+        return path
+    finally:
+        plt.close(fig)
 
 def check_alerts(user_id, symbol, price, change_pct, vol_ratio):
     conn = get_db()
@@ -201,8 +219,11 @@ def get_portfolio_summary(user_id):
     total_current = 0
     holdings = []
     sector_map = {}
+    stock_cache = {}
     for row_id, symbol, shares, buy_price in rows:
-        data = get_stock_data(symbol)
+        if symbol not in stock_cache:
+            stock_cache[symbol] = get_stock_data(symbol)
+        data = stock_cache[symbol]
         if not data:
             continue
         invested = shares * buy_price
@@ -390,9 +411,18 @@ def get_stock_full():
     if not data:
         return jsonify({'error': 'Not found'}), 404
     chart = generate_chart(symbol, data['history'], user_id)
-    triggered = check_alerts(user_id, symbol, data['price'], data['change_pct'], data['vol_ratio'])
-    unusual = detect_unusual_activity(data)
-    news = get_news(symbol)
+    try:
+        triggered = check_alerts(user_id, symbol, data['price'], data['change_pct'], data['vol_ratio'])
+    except Exception:
+        triggered = []
+    try:
+        unusual = detect_unusual_activity(data)
+    except Exception:
+        unusual = []
+    try:
+        news = get_news(symbol)
+    except Exception:
+        news = []
     return jsonify({
         'symbol': data['symbol'], 'name': data['name'],
         'price': data['price'], 'change_pct': data['change_pct'],
@@ -561,15 +591,23 @@ def global_markets():
 
 @app.route('/api/market_status')
 def market_status():
-    now = datetime.utcnow()
-    # IST = UTC+5:30, NYSE = UTC-5 (EST)
-    ist_hour = (now.hour + 5) % 24
-    ist_min  = (now.minute + 30) % 60
-    ist_time = ist_hour + (1 if now.minute + 30 >= 60 else 0)
-    weekday  = now.weekday()  # 0=Mon, 6=Sun
-    nse_open  = weekday < 5 and (9 < ist_time < 15 or (ist_time == 9 and ist_min >= 15) or (ist_time == 15 and ist_min <= 30))
-    nyse_hour = (now.hour - 5) % 24
-    nyse_open = weekday < 5 and 9 <= nyse_hour < 16
+    utc_now = datetime.now(timezone.utc)
+    # IST = UTC + 5:30
+    ist_now = utc_now + timedelta(hours=5, minutes=30)
+    ist_weekday = ist_now.weekday()  # 0=Mon, 6=Sun
+    ist_mins = ist_now.hour * 60 + ist_now.minute
+    # NSE trading hours: Mon-Fri 09:15 to 15:30 IST
+    nse_open = (ist_weekday < 5) and (9 * 60 + 15 <= ist_mins <= 15 * 60 + 30)
+
+    # US Eastern Time: EDT (UTC-4) mid-Mar to early Nov, else EST (UTC-5)
+    is_dst = 3 <= utc_now.month <= 11
+    et_offset = timedelta(hours=-4 if is_dst else -5)
+    et_now = utc_now + et_offset
+    et_weekday = et_now.weekday()
+    et_mins = et_now.hour * 60 + et_now.minute
+    # NYSE trading hours: Mon-Fri 09:30 to 16:00 ET
+    nyse_open = (et_weekday < 5) and (9 * 60 + 30 <= et_mins <= 16 * 60)
+
     if nse_open and nyse_open:
         label, color = 'NSE & NYSE Open', '#00e676'
     elif nse_open:
@@ -594,6 +632,8 @@ def stock_detail():
         closes = hist['Close'].tolist()
         highs  = hist['High'].tolist()
         lows   = hist['Low'].tolist()
+        opens  = hist['Open'].tolist()
+        vols   = hist['Volume'].tolist()
         dates  = [str(d.date()) for d in hist.index]
         price  = info.get('currentPrice') or info.get('regularMarketPrice') or closes[-1]
         prev   = info.get('previousClose', closes[-2] if len(closes) > 1 else price)
@@ -614,6 +654,8 @@ def stock_detail():
             'dates': dates, 'closes': [round(c,2) for c in closes],
             'highs':  [round(h,2) for h in highs],
             'lows':   [round(l,2) for l in lows],
+            'opens':  [round(o,2) for o in opens],
+            'volumes': [int(v) for v in vols],
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -672,10 +714,11 @@ def generate_insight(symbol, price, change_pct, vol_ratio, high_52w, low_52w, bu
     return insights[0] if insights else f"📈 {symbol} at ${price} — no significant signals right now. Monitor for breakout above ${round(price*1.03,2)}."
 
 def run_ai_agent():
-    """Background agent — runs every 5 minutes, analyzes all portfolio stocks for all users"""
+    """Background agent — runs every 5 minutes, analyzes portfolio stocks and checks price alerts"""
     while True:
         try:
             conn = get_db()
+            # 1. Analyze portfolio stocks
             users = conn.execute("SELECT DISTINCT user_id FROM portfolio").fetchall()
             for (uid,) in users:
                 rows = conn.execute("SELECT symbol, buy_price FROM portfolio WHERE user_id=?", (uid,)).fetchall()
@@ -708,6 +751,43 @@ def run_ai_agent():
                                 (uid, symbol, msg, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                             conn.commit()
                     except: continue
+
+            # 2. Check active user-configured price alerts in background
+            active_alerts = conn.execute("SELECT id, user_id, symbol, condition, target, volume_condition FROM alerts WHERE status='Active'").fetchall()
+            for aid, uid, symbol, condition, target, vol_cond in active_alerts:
+                try:
+                    t = yf.Ticker(symbol)
+                    fi = t.fast_info
+                    price = getattr(fi, 'last_price', None) or getattr(fi, 'regular_market_price', None)
+                    prev  = getattr(fi, 'previous_close', price)
+                    if not price: continue
+                    change_pct = round((price - prev) / prev * 100, 2) if prev else 0
+                    avg_vol = getattr(fi, 'three_month_average_volume', 1) or 1
+                    vol = getattr(fi, 'last_volume', avg_vol) or avg_vol
+                    vol_ratio = round(vol / avg_vol, 2) if avg_vol else 1
+
+                    hit = False
+                    msg = ''
+                    if condition == 'above' and price >= target:
+                        hit, msg = True, f"🚨 {symbol} crossed ABOVE ${target}! Now: ${price:.2f}"
+                    elif condition == 'below' and price <= target:
+                        hit, msg = True, f"🚨 {symbol} dropped BELOW ${target}! Now: ${price:.2f}"
+                    elif condition == 'pct_up' and change_pct >= target:
+                        hit, msg = True, f"🚨 {symbol} UP {change_pct}% (target: +{target}%)"
+                    elif condition == 'pct_down' and change_pct <= -target:
+                        hit, msg = True, f"🚨 {symbol} DOWN {abs(change_pct)}% (target: -{target}%)"
+                    if hit:
+                        if vol_cond == '2x' and vol_ratio < 2: hit = False
+                        if vol_cond == '3x' and vol_ratio < 3: hit = False
+                    if hit:
+                        priority = "🔴 HIGH PRIORITY" if vol_ratio >= 2 else "🟡"
+                        msg = f"{priority} {msg}"
+                        conn.execute("UPDATE alerts SET status='Triggered' WHERE id=?", (aid,))
+                        conn.execute("INSERT INTO alert_history (user_id, symbol, message, triggered_at) VALUES (?,?,?,?)",
+                            (uid, symbol, msg, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                        conn.commit()
+                except: continue
+
             conn.close()
         except: pass
         time.sleep(300)  # every 5 minutes
@@ -1075,6 +1155,201 @@ def paper_leaderboard():
     board.sort(key=lambda x: x['return_pct'], reverse=True)
     for i, b in enumerate(board): b['rank'] = i + 1
     return jsonify(board)
+
+# ── Live Market Data Layer (cached + threaded — rate-limit safe) ─────────────
+_pool = ThreadPoolExecutor(max_workers=12)
+
+def _g(obj, *names):
+    for n in names:
+        try:
+            v = getattr(obj, n)
+            if v is not None:
+                return v
+        except Exception:
+            continue
+    return None
+
+NIFTY50 = [
+    ('RELIANCE.NS','Reliance'),('TCS.NS','TCS'),('HDFCBANK.NS','HDFC Bank'),
+    ('ICICIBANK.NS','ICICI Bank'),('INFY.NS','Infosys'),('HINDUNILVR.NS','HUL'),
+    ('ITC.NS','ITC'),('SBIN.NS','SBI'),('BHARTIARTL.NS','Bharti Airtel'),
+    ('KOTAKBANK.NS','Kotak Bank'),('LT.NS','L&T'),('AXISBANK.NS','Axis Bank'),
+    ('ASIANPAINT.NS','Asian Paints'),('MARUTI.NS','Maruti Suzuki'),('HCLTECH.NS','HCL Tech'),
+    ('BAJFINANCE.NS','Bajaj Finance'),('WIPRO.NS','Wipro'),('SUNPHARMA.NS','Sun Pharma'),
+    ('TITAN.NS','Titan'),('ULTRACEMCO.NS','UltraTech'),('ONGC.NS','ONGC'),
+    ('NTPC.NS','NTPC'),('POWERGRID.NS','Power Grid'),('M&M.NS','Mahindra'),
+    ('TATAMOTORS.NS','Tata Motors'),('TATASTEEL.NS','Tata Steel'),('JSWSTEEL.NS','JSW Steel'),
+    ('ADANIENT.NS','Adani Ent'),('ADANIPORTS.NS','Adani Ports'),('COALINDIA.NS','Coal India'),
+    ('BAJAJFINSV.NS','Bajaj Finserv'),('HDFCLIFE.NS','HDFC Life'),('SBILIFE.NS','SBI Life'),
+    ('TECHM.NS','Tech Mahindra'),('INDUSINDBK.NS','IndusInd'),('DRREDDY.NS','Dr Reddys'),
+    ('CIPLA.NS','Cipla'),('DIVISLAB.NS','Divis Labs'),('EICHERMOT.NS','Eicher Motors'),
+    ('GRASIM.NS','Grasim'),('HEROMOTOCO.NS','Hero Moto'),('HINDALCO.NS','Hindalco'),
+    ('BPCL.NS','BPCL'),('BRITANNIA.NS','Britannia'),('APOLLOHOSP.NS','Apollo Hosp'),
+    ('NESTLEIND.NS','Nestle India'),('TATACONSUM.NS','Tata Consumer'),('SBICARD.NS','SBI Card'),
+]
+
+def _fetch_index(name, sym):
+    try:
+        t = yf.Ticker(sym)
+        fi = t.fast_info
+        price = _g(fi, 'last_price', 'regular_market_price') or 0
+        prev = _g(fi, 'previous_close') or price
+        price, prev = float(price), float(prev)
+        chg = round((price - prev) / prev * 100, 2) if prev else 0
+        return {'symbol': name, 'price': round(price, 2), 'change': chg}
+    except Exception:
+        return {'symbol': name, 'price': 0, 'change': 0}
+
+def _fetch_stock(sym, name):
+    out = {'symbol': sym, 'name': name, 'price': 0, 'change': 0, 'cap': 0, 'volume': 0}
+    try:
+        t = yf.Ticker(sym)
+        fi = t.fast_info
+        price = float(_g(fi, 'last_price', 'regular_market_price') or 0)
+        prev = float(_g(fi, 'previous_close') or price or 0)
+        vol = int(_g(fi, 'last_volume', 'volume') or 0)
+        cap = _g(fi, 'market_cap', 'marketCap')
+        if not cap:
+            sh = _g(fi, 'shares')
+            if price and sh:
+                cap = price * float(sh)
+        chg = round((price - prev) / prev * 100, 2) if prev and price else 0
+        out.update({'price': round(price, 2), 'change': chg,
+                    'cap': int(cap or 0), 'volume': vol})
+    except Exception:
+        pass
+    return out
+
+_idx_cache = {'ts': 0, 'data': None}
+_ov_cache = {'ts': 0, 'data': None}
+_qcache = {}
+
+TICKER_INDICES = [
+    ('NIFTY 50', '^NSEI'), ('SENSEX', '^BSESN'), ('BANKNIFTY', '^NSEBANK'),
+    ('NASDAQ', '^IXIC'), ('S&P 500', '^GSPC'), ('GOLD', 'GC=F'),
+]
+
+def _ticker_indices():
+    if _idx_cache['data'] is not None and time.time() - _idx_cache['ts'] < 30:
+        return _idx_cache['data']
+    data = list(_pool.map(lambda a: _fetch_index(*a), TICKER_INDICES))
+    _idx_cache['ts'] = time.time()
+    _idx_cache['data'] = data
+    return data
+
+def _fast_quote(sym):
+    now = time.time()
+    e = _qcache.get(sym)
+    if e and now - e[0] < 20:
+        return e[1]
+    res = {'symbol': sym, 'price': 0, 'change': 0}
+    try:
+        t = yf.Ticker(sym)
+        fi = t.fast_info
+        price = float(_g(fi, 'last_price', 'regular_market_price') or 0)
+        prev = float(_g(fi, 'previous_close') or price or 0)
+        chg = round((price - prev) / prev * 100, 2) if prev and price else 0
+        res = {'symbol': sym, 'price': round(price, 2), 'change': chg}
+    except Exception:
+        pass
+    _qcache[sym] = (now, res)
+    return res
+
+def _nifty_snapshot():
+    if _ov_cache['data'] is not None and time.time() - _ov_cache['ts'] < 90:
+        return _ov_cache['data']
+    stocks = list(_pool.map(lambda a: _fetch_stock(*a), NIFTY50))
+    adv = sum(1 for s in stocks if s['change'] > 0)
+    dec = sum(1 for s in stocks if s['change'] < 0)
+    unch = len(stocks) - adv - dec
+    data = {
+        'stocks': stocks,
+        'breadth': {'advances': adv, 'declines': dec, 'unchanged': unch, 'total': len(stocks)},
+        'updated': datetime.now().strftime('%H:%M:%S'),
+    }
+    _ov_cache['ts'] = time.time()
+    _ov_cache['data'] = data
+    return data
+
+@app.route('/api/ticker')
+@login_required
+def api_ticker():
+    idx = _ticker_indices()
+    conn = get_db()
+    wl = [r[0] for r in conn.execute(
+        "SELECT symbol FROM watchlist WHERE user_id=?", (session['user_id'],)).fetchall()]
+    conn.close()
+    wlist = list(_pool.map(_fast_quote, wl)) if wl else []
+    return jsonify({'indices': idx, 'watchlist': wlist})
+
+@app.route('/api/market_overview')
+@login_required
+def api_market_overview():
+    return jsonify(_nifty_snapshot())
+
+# ── ML Model Routes ──────────────────────────────────────────────────────────
+from model_trainer import train_model, load_model, predict as ml_predict
+from report_generator import generate_pdf_report
+
+@app.route('/api/predict', methods=['POST'])
+@login_required
+def api_predict():
+    symbol = request.json.get('symbol', '').strip().upper()
+    if not symbol:
+        return jsonify({'error': 'Symbol required'}), 400
+    try:
+        result = ml_predict(symbol)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/train_model', methods=['POST'])
+@login_required
+def api_train_model():
+    symbol = request.json.get('symbol', '').strip().upper()
+    if not symbol:
+        return jsonify({'error': 'Symbol required'}), 400
+    try:
+        data = train_model(symbol)
+        return jsonify({
+            'message': f'✅ Model trained for {symbol}',
+            'metrics': data['metrics'],
+            'trained_at': data['trained_at']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/model_report', methods=['POST'])
+@login_required
+def api_model_report():
+    symbol = request.json.get('symbol', '').strip().upper()
+    if not symbol:
+        return jsonify({'error': 'Symbol required'}), 400
+    try:
+        model_data = load_model(symbol)
+        if not model_data:
+            model_data = train_model(symbol)
+        filepath, filename = generate_pdf_report(model_data)
+        return send_file(filepath, as_attachment=True, download_name=filename, mimetype='application/pdf')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/model_status', methods=['POST'])
+@login_required
+def api_model_status():
+    symbol = request.json.get('symbol', '').strip().upper()
+    model_data = load_model(symbol)
+    if not model_data:
+        return jsonify({'exists': False, 'symbol': symbol})
+    return jsonify({
+        'exists': True,
+        'symbol': symbol,
+        'trained_at': model_data['trained_at'],
+        'accuracy': model_data['metrics']['accuracy'],
+        'mae': model_data['metrics']['mae'],
+        'r2': model_data['metrics']['r2'],
+    })
+
 
 if __name__ == '__main__':
     app.run(debug=True)

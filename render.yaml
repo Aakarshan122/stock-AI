@@ -3,7 +3,9 @@ services:
     name: stock-tracker
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --timeout 120 --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
